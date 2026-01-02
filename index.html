@@ -5,430 +5,460 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TRIANGULO APP - Gestor de Ventas</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+        .view-transition { transition: opacity 0.2s ease-in-out; }
     </style>
-    <script type="importmap">
-    {
-      "imports": {
-        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-        "react/": "https://esm.sh/react@^19.2.3/",
-        "react": "https://esm.sh/react@^19.2.3",
-        "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
-      }
-    }
-    </script>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+  }
+}
+</script>
 </head>
-<body class="bg-gray-50 text-gray-900 overflow-x-hidden">
-    <div id="root"></div>
+<body class="bg-gray-50 text-gray-900 overflow-x-hidden pb-24">
 
-    <script type="module">
-        import React, { useState, useEffect, useMemo, useRef } from 'react';
-        import ReactDOM from 'react-dom/client';
-        import { 
-          Sun, Moon, Banknote, LayoutDashboard, Settings, Plus, Eye, EyeOff, Save, Download, 
-          Copy, Calendar, Upload, FileJson, ArrowUp, ArrowDown, Camera, X, ChevronLeft, 
-          ChevronRight, Triangle, Receipt, ShieldCheck, Palette, Sparkles, ChevronDown, 
-          Percent, Calculator, CheckCircle2, History, TrendingUp, Wallet, ArrowRight, 
-          MessageSquareText, ClipboardCheck, UserPlus 
-        } from 'lucide-react';
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <i data-lucide="triangle" class="fill-white"></i>
+            <h1 class="text-xl font-black tracking-tighter">TRIANGULO APP</h1>
+        </div>
+        <button onclick="changeView('settings')" class="p-2 bg-white/20 rounded-full">
+            <i data-lucide="settings" size="20"></i>
+        </button>
+    </header>
 
-        // --- COMPONENTS ---
+    <!-- Date Selector -->
+    <div class="p-2 border-b flex items-center justify-between sticky top-[60px] z-40 bg-white/80 backdrop-blur-md">
+        <button onclick="addDays(-1)" class="p-2 text-indigo-600"><i data-lucide="chevron-left"></i></button>
+        <div class="flex items-center gap-2 px-4 py-2 rounded-xl border bg-gray-50">
+            <i data-lucide="calendar" size="18" class="text-indigo-600"></i>
+            <input type="date" id="dateInput" onchange="handleDateChange()" class="bg-transparent text-sm font-bold focus:outline-none cursor-pointer">
+        </div>
+        <button onclick="addDays(1)" class="p-2 text-indigo-600"><i data-lucide="chevron-right"></i></button>
+    </div>
 
-        const Navigation = ({ currentView, setView, theme }) => {
-          const navItems = [
-            { id: 'morning', label: 'Mañana', icon: Sun },
-            { id: 'afternoon', label: 'Tarde', icon: Moon },
-            { id: 'payments', label: 'Pagos', icon: Banknote },
-            { id: 'summary', label: 'Resumen', icon: LayoutDashboard },
-          ];
+    <!-- Main Content -->
+    <main id="mainContent" class="p-4 max-w-lg mx-auto w-full view-transition">
+        <!-- Contenido inyectado por JS -->
+    </main>
 
-          const themeActiveColors = {
-            indigo: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30',
-            emerald: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30',
-            rose: 'text-rose-500 bg-rose-50 dark:bg-rose-900/30',
-            amber: 'text-amber-500 bg-amber-50 dark:bg-amber-900/30',
-            slate: 'text-slate-500 bg-slate-50 dark:bg-slate-900/30'
-          };
+    <!-- Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 px-2 py-2 pb-safe z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+        <div class="flex justify-around items-center max-w-lg mx-auto gap-1">
+            <button onclick="changeView('morning')" id="nav-morning" class="flex flex-col items-center justify-center p-2 rounded-xl flex-1 text-gray-400">
+                <i data-lucide="sun" size="22"></i>
+                <span class="text-[8px] mt-1 font-black uppercase">Mañana</span>
+            </button>
+            <button onclick="changeView('afternoon')" id="nav-afternoon" class="flex flex-col items-center justify-center p-2 rounded-xl flex-1 text-gray-400">
+                <i data-lucide="moon" size="22"></i>
+                <span class="text-[8px] mt-1 font-black uppercase">Tarde</span>
+            </button>
+            <button onclick="changeView('payments')" id="nav-payments" class="flex flex-col items-center justify-center p-2 rounded-xl flex-1 text-gray-400">
+                <i data-lucide="banknote" size="22"></i>
+                <span class="text-[8px] mt-1 font-black uppercase">Pagos</span>
+            </button>
+            <button onclick="changeView('summary')" id="nav-summary" class="flex flex-col items-center justify-center p-2 rounded-xl flex-1 text-gray-400">
+                <i data-lucide="layout-dashboard" size="22"></i>
+                <span class="text-[8px] mt-1 font-black uppercase">Resumen</span>
+            </button>
+        </div>
+    </nav>
 
-          return (
-            <nav className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-950/95 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800 px-2 py-2 pb-safe z-50 transition-colors shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-              <div className="flex justify-around items-center max-w-lg mx-auto gap-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = currentView === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setView(item.id)}
-                      className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-300 flex-1 ${
-                        isActive 
-                          ? `${themeActiveColors[theme]} scale-105 shadow-sm` 
-                          : 'text-gray-400 dark:text-gray-500 hover:text-gray-600'
-                      }`}
-                    >
-                      <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                      <span className={`text-[8px] mt-1 font-black uppercase text-center leading-none tracking-tight ${isActive ? 'opacity-100' : 'opacity-60'}`}>
-                        {item.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </nav>
-          );
+    <script>
+        // --- State ---
+        let state = {
+            currentView: 'morning',
+            selectedDate: new Date().toISOString().split('T')[0],
+            sellers: [
+                { id: 's1', name: 'Vendedor 1', active: true },
+                { id: 's2', name: 'Vendedor 2', active: true }
+            ],
+            branches: [
+                { id: 'b1', name: 'Sucursal Central', active: true },
+                { id: 'b2', name: 'Virtual', active: true }
+            ],
+            terminals: [{ id: 't1', name: 'Terminal A', active: true }],
+            sales: [], // { date, sellerId, amount, shift }
+            payments: [], // { date, sellerId, amount, shift }
+            closures: [], // { date, branchId, morning, afternoon }
+            extras: [], // { date, type, amount, shift, description }
+            terminalEntries: [] // { date, terminalId, amount, shift }
         };
 
-        // --- MAIN APP ---
-
-        const App = () => {
-          const [view, setView] = useState('morning');
-          const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-          const [theme, setTheme] = useState('indigo');
-          const [isDarkMode, setIsDarkMode] = useState(false);
-          const [saveStatus, setSaveStatus] = useState('idle');
-          
-          const [sellers, setSellers] = useState([]);
-          const [branches, setBranches] = useState([]);
-          const [terminals, setTerminals] = useState([]);
-          const [sales, setSales] = useState([]);
-          const [payments, setPayments] = useState([]);
-          const [branchClosures, setBranchClosures] = useState([]);
-          const [terminalEntries, setTerminalEntries] = useState([]);
-          const [extraExpenses, setExtraExpenses] = useState([]);
-
-          useEffect(() => {
-            const data = localStorage.getItem('vendas_app_data');
-            if (data) {
-              const p = JSON.parse(data);
-              setSellers(p.sellers || []);
-              setBranches(p.branches || []);
-              setTerminals(p.terminals || []);
-              setSales(p.sales || []);
-              setPayments(p.payments || []);
-              setBranchClosures(p.branchClosures || []);
-              setTerminalEntries(p.terminalEntries || []);
-              setExtraExpenses(p.extraExpenses || []);
-              if (p.theme) setTheme(p.theme);
-              if (p.isDarkMode !== undefined) setIsDarkMode(p.isDarkMode);
-            } else {
-              setSellers([
-                { id: '1', name: 'Vendedor 1', active: true, order: 0 },
-                { id: '2', name: 'Vendedor 2', active: true, order: 1 }
-              ]);
-              setBranches([
-                { id: '1', name: 'Sucursal Central', active: true, order: 0 }, 
-                { id: 'v', name: 'Virtual', active: true, order: 1 }
-              ]);
-              setTerminals([{ id: '1', name: 'Terminal A', active: true, order: 0 }]);
+        // --- Persistence ---
+        function loadState() {
+            const saved = localStorage.getItem('triangulo_app_vanilla');
+            if (saved) {
+                state = { ...state, ...JSON.parse(saved) };
             }
-          }, []);
+            document.getElementById('dateInput').value = state.selectedDate;
+        }
 
-          const persistData = () => {
-            const data = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
-            localStorage.setItem('vendas_app_data', JSON.stringify(data));
-            setSaveStatus('success');
-            setTimeout(() => setSaveStatus('idle'), 1500);
-          };
+        function saveState() {
+            localStorage.setItem('triangulo_app_vanilla', JSON.stringify(state));
+        }
 
-          const activeSellers = useMemo(() => sellers.filter(s => s.active), [sellers]);
-          const activeBranches = useMemo(() => branches.filter(b => b.active), [branches]);
-          const activeTerminals = useMemo(() => terminals.filter(t => t.active), [terminals]);
+        // --- Helpers ---
+        function formatCurrency(val) {
+            return Math.round(val || 0).toLocaleString('en-US');
+        }
 
-          const formatCurrency = (val) => Math.round(val).toLocaleString('en-US');
-
-          const formatDateSpanish = (dateStr) => {
+        function formatDateSpanish(dateStr) {
             const [year, month, day] = dateStr.split('-').map(Number);
             const date = new Date(year, month - 1, day);
             const weekday = date.toLocaleDateString('es-ES', { weekday: 'long' });
-            const dayNum = date.toLocaleDateString('es-ES', { day: '2-digit' });
             const monthLabel = date.toLocaleDateString('es-ES', { month: 'long' });
-            return `${weekday.charAt(0).toUpperCase() + weekday.slice(1)} ${dayNum} de ${monthLabel} ${year}`;
-          };
+            return `${weekday.charAt(0).toUpperCase() + weekday.slice(1)} ${day} de ${monthLabel} ${year}`;
+        }
 
-          const summaryData = useMemo(() => {
-            const dayClosures = branchClosures.filter(b => b.date === selectedDate);
-            const dayPayments = payments.filter(p => p.date === selectedDate);
-            const dayTerminals = terminalEntries.filter(t => t.date === selectedDate);
-            const dayExtras = extraExpenses.filter(e => e.date === selectedDate);
+        // --- Actions ---
+        function changeView(view) {
+            state.currentView = view;
+            render();
+        }
 
-            const detailByBranch = activeBranches.map(br => {
-              const d = dayClosures.find(c => c.branchId === br.id);
-              return { name: br.name, total: (d?.morningAmount || 0) + (d?.afternoonAmount || 0) };
+        function handleDateChange() {
+            state.selectedDate = document.getElementById('dateInput').value;
+            render();
+        }
+
+        function addDays(n) {
+            const d = new Date(state.selectedDate + 'T12:00:00');
+            d.setDate(d.getDate() + n);
+            state.selectedDate = d.toISOString().split('T')[0];
+            document.getElementById('dateInput').value = state.selectedDate;
+            render();
+        }
+
+        // --- Logic ---
+        function updateValue(arrayName, key, matchObj, value) {
+            const val = parseFloat(value) || 0;
+            state[arrayName] = state[arrayName].filter(x => {
+                return !Object.keys(matchObj).every(k => x[k] === matchObj[k]);
+            });
+            state[arrayName].push({ ...matchObj, [key]: val });
+            saveState();
+        }
+
+        function getVal(arrayName, matchObj, key) {
+            const found = state[arrayName].find(x => {
+                return !Object.keys(matchObj).every(k => x[k] === matchObj[k]);
+            }); // This logic is wrong, fixing:
+        }
+
+        // Optimized Getter
+        function findVal(arrayName, matchObj, key) {
+            const found = state[arrayName].find(x => 
+                Object.keys(matchObj).every(k => x[k] === matchObj[k])
+            );
+            return found ? (found[key] || 0) : 0;
+        }
+
+        // --- Rendering ---
+        function render() {
+            const main = document.getElementById('mainContent');
+            main.style.opacity = '0';
+            
+            setTimeout(() => {
+                main.innerHTML = '';
+                updateNav();
+
+                if (state.currentView === 'morning' || state.currentView === 'afternoon') {
+                    renderSalesView(main, state.currentView);
+                } else if (state.currentView === 'payments') {
+                    renderPaymentsView(main);
+                } else if (state.currentView === 'summary') {
+                    renderSummaryView(main);
+                } else if (state.currentView === 'settings') {
+                    renderSettingsView(main);
+                }
+                
+                lucide.createIcons();
+                main.style.opacity = '1';
+            }, 100);
+        }
+
+        function updateNav() {
+            ['morning', 'afternoon', 'payments', 'summary'].forEach(v => {
+                const btn = document.getElementById('nav-' + v);
+                if (!btn) return;
+                if (state.currentView === v) {
+                    btn.classList.add('text-indigo-600', 'bg-indigo-50');
+                    btn.classList.remove('text-gray-400');
+                } else {
+                    btn.classList.remove('text-indigo-600', 'bg-indigo-50');
+                    btn.classList.add('text-gray-400');
+                }
+            });
+        }
+
+        function renderSalesView(container, shift) {
+            const activeSellers = state.sellers.filter(s => s.active);
+            let html = `<div class="bg-white p-4 rounded-3xl shadow-sm border space-y-3">
+                <h2 class="text-[10px] font-black uppercase tracking-widest border-b pb-2 opacity-50">Ventas ${shift === 'morning' ? 'Mañana' : 'Tarde'}</h2>`;
+            
+            activeSellers.forEach(s => {
+                const val = findVal('sales', { date: state.selectedDate, sellerId: s.id, shift }, 'amount');
+                html += `
+                <div class="flex items-center justify-between p-2 rounded-xl border bg-gray-50/50">
+                    <span class="font-bold text-sm ml-2">${s.name}</span>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 opacity-40 font-bold">$</span>
+                        <input type="number" value="${val || ''}" 
+                            oninput="updateValue('sales', 'amount', { date: '${state.selectedDate}', sellerId: '${s.id}', shift: '${shift}' }, this.value)"
+                            class="w-32 pl-7 pr-3 py-2 rounded-lg text-right font-black shadow-inner border-transparent focus:border-indigo-300 outline-none">
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderPaymentsView(container) {
+            const activeSellers = state.sellers.filter(s => s.active);
+            let html = `<div class="bg-white p-4 rounded-3xl shadow-sm border space-y-4">
+                <h2 class="text-[10px] font-black uppercase tracking-widest border-b pb-2 opacity-50">Pagos a Vendedores</h2>`;
+            
+            activeSellers.forEach(s => {
+                const mVal = findVal('payments', { date: state.selectedDate, sellerId: s.id, shift: 'morning' }, 'amount');
+                const aVal = findVal('payments', { date: state.selectedDate, sellerId: s.id, shift: 'afternoon' }, 'amount');
+                html += `
+                <div class="p-3 border rounded-2xl bg-gray-50/30">
+                    <p class="font-bold mb-2 ml-1 text-sm">${s.name}</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="relative">
+                            <input type="number" placeholder="Mañana" value="${mVal || ''}" 
+                                oninput="updateValue('payments', 'amount', { date: '${state.selectedDate}', sellerId: '${s.id}', shift: 'morning' }, this.value)"
+                                class="w-full p-2 bg-yellow-50 border-yellow-100 border rounded-lg text-right font-black text-yellow-700 outline-none">
+                        </div>
+                        <div class="relative">
+                            <input type="number" placeholder="Tarde" value="${aVal || ''}" 
+                                oninput="updateValue('payments', 'amount', { date: '${state.selectedDate}', sellerId: '${s.id}', shift: 'afternoon' }, this.value)"
+                                class="w-full p-2 bg-blue-50 border-blue-100 border rounded-lg text-right font-black text-blue-700 outline-none">
+                        </div>
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderSummaryView(container) {
+            const activeBranches = state.branches.filter(b => b.active);
+            const activeTerminals = state.terminals.filter(t => t.active);
+            
+            // Cierre de Sucursales
+            let html = `<div class="bg-white p-4 rounded-3xl shadow-sm border space-y-4 mb-4">
+                <h2 class="text-[10px] font-black uppercase tracking-widest opacity-50 flex items-center gap-2"><i data-lucide="clipboard-check" size="14"></i> Cierre Sucursales</h2>`;
+            
+            activeBranches.forEach(b => {
+                const mVal = findVal('closures', { date: state.selectedDate, branchId: b.id }, 'morning');
+                const aVal = findVal('closures', { date: state.selectedDate, branchId: b.id }, 'afternoon');
+                html += `
+                <div class="space-y-2 border-b border-gray-50 pb-3">
+                    <p class="text-xs font-black uppercase opacity-60 ml-1">${b.name}</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="number" placeholder="Mañana" value="${mVal || ''}" 
+                            oninput="updateValue('closures', 'morning', { date: '${state.selectedDate}', branchId: '${b.id}' }, this.value)"
+                            class="p-2 bg-yellow-50/50 border rounded-xl text-right font-black outline-none focus:ring-2 focus:ring-yellow-200">
+                        <input type="number" placeholder="Tarde" value="${aVal || ''}" 
+                            oninput="updateValue('closures', 'afternoon', { date: '${state.selectedDate}', branchId: '${b.id}' }, this.value)"
+                            class="p-2 bg-blue-50/50 border rounded-xl text-right font-black outline-none focus:ring-2 focus:ring-blue-200">
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+
+            // Extras (Gastos) y Terminales
+            html += `<div class="bg-white p-4 rounded-3xl shadow-sm border space-y-4 mb-4">
+                <h2 class="text-[10px] font-black uppercase tracking-widest opacity-50">Gastos y Terminales</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-[9px] font-black opacity-40 uppercase ml-1">Gastos (M/T)</label>
+                        <input type="number" placeholder="M" value="${findVal('extras', { date: state.selectedDate, type: 'gasto', shift: 'morning' }, 'amount') || ''}" 
+                            oninput="updateValue('extras', 'amount', { date: '${state.selectedDate}', type: 'gasto', shift: 'morning', description: 'Gasto' }, this.value)"
+                            class="w-full p-2 bg-rose-50 border rounded-lg mb-1 text-right font-bold text-rose-600">
+                        <input type="number" placeholder="T" value="${findVal('extras', { date: state.selectedDate, type: 'gasto', shift: 'afternoon' }, 'amount') || ''}" 
+                            oninput="updateValue('extras', 'amount', { date: '${state.selectedDate}', type: 'gasto', shift: 'afternoon', description: 'Gasto' }, this.value)"
+                            class="w-full p-2 bg-rose-50 border rounded-lg text-right font-bold text-rose-600">
+                    </div>`;
+            
+            activeTerminals.forEach(t => {
+                html += `
+                <div class="space-y-1">
+                    <label class="text-[9px] font-black opacity-40 uppercase ml-1">${t.name}</label>
+                    <input type="number" placeholder="M" value="${findVal('terminalEntries', { date: state.selectedDate, terminalId: t.id, shift: 'morning' }, 'amount') || ''}" 
+                        oninput="updateValue('terminalEntries', 'amount', { date: '${state.selectedDate}', terminalId: '${t.id}', shift: 'morning' }, this.value)"
+                        class="w-full p-2 bg-emerald-50 border rounded-lg mb-1 text-right font-bold text-emerald-600">
+                    <input type="number" placeholder="T" value="${findVal('terminalEntries', { date: state.selectedDate, terminalId: t.id, shift: 'afternoon' }, 'amount') || ''}" 
+                        oninput="updateValue('terminalEntries', 'amount', { date: '${state.selectedDate}', terminalId: '${t.id}', shift: 'afternoon' }, this.value)"
+                        class="w-full p-2 bg-emerald-50 border rounded-lg text-right font-bold text-emerald-600">
+                </div>`;
+            });
+            html += `</div></div>`;
+
+            // Reporte Final
+            const totals = calculateTotals();
+            html += `
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-indigo-100 cursor-pointer active:scale-95 transition-all mb-8" onclick="copyReport()">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="font-black text-xl text-indigo-600 tracking-tighter">${formatDateSpanish(state.selectedDate)}</h2>
+                    <i data-lucide="copy" class="text-indigo-300"></i>
+                </div>
+                <div class="space-y-3 border-b border-dashed pb-5 mb-5">
+                    ${totals.branchDetails.map(b => `<div class="flex justify-between text-sm items-center"><span class="text-gray-500 font-medium">${b.name}</span><span class="font-bold">$ ${formatCurrency(b.total)}</span></div>`).join('')}
+                    <div class="flex justify-between font-black text-lg text-indigo-600 pt-2">
+                        <span>TOTAL VENTAS</span>
+                        <span>$ ${formatCurrency(totals.totalGross)}</span>
+                    </div>
+                </div>
+                <div class="space-y-1 mb-6">
+                    <p class="text-[9px] font-black uppercase opacity-40 mb-2">Deducciones</p>
+                    <div class="flex justify-between text-sm text-rose-500">
+                        <span class="font-medium italic">Pagos y Gastos</span>
+                        <span class="font-bold">-$ ${formatCurrency(totals.totalDeductions)}</span>
+                    </div>
+                </div>
+                <div class="bg-indigo-600 p-6 rounded-3xl text-white text-center relative overflow-hidden shadow-lg shadow-indigo-200">
+                    <p class="text-xs font-black uppercase opacity-70 mb-1">Efectivo Total a Entregar</p>
+                    <p class="text-5xl font-black tracking-tighter">$ ${formatCurrency(totals.totalCash)}</p>
+                    <i data-lucide="banknote" class="absolute -right-6 -bottom-6 opacity-10 rotate-12" style="width:120px; height:120px;"></i>
+                </div>
+                <p class="text-[10px] text-center mt-4 font-black text-indigo-400 uppercase tracking-widest animate-pulse">Toca para copiar resumen</p>
+            </div>`;
+
+            container.innerHTML = html;
+        }
+
+        function calculateTotals() {
+            const dayClosures = state.closures.filter(x => x.date === state.selectedDate);
+            const dayPmts = state.payments.filter(x => x.date === state.selectedDate);
+            const dayExtras = state.extras.filter(x => x.date === state.selectedDate);
+            const dayTerminals = state.terminalEntries.filter(x => x.date === state.selectedDate);
+
+            const branchDetails = state.branches.filter(b => b.active).map(b => {
+                const c = dayClosures.find(x => x.branchId === b.id);
+                return { name: b.name, total: (c?.morning || 0) + (c?.afternoon || 0) };
             });
 
-            const groupedPayments = dayPayments.reduce((acc, p) => {
-              const s = sellers.find(x => x.id === p.sellerId);
-              if (!acc[p.sellerId]) acc[p.sellerId] = { name: s ? s.name : 'Vendedor', amount: 0 };
-              acc[p.sellerId].amount += p.amount;
-              return acc;
-            }, {});
-
-            const totalGross = detailByBranch.reduce((a, b) => a + b.total, 0);
-            const totalPmts = dayPayments.reduce((a, p) => a + p.amount, 0);
-            const totalGastos = dayExtras.filter(e => e.type === 'gasto').reduce((a, e) => a + e.amount, 0);
-            const totalGars = dayExtras.filter(e => e.type === 'garantia').reduce((a, e) => a + e.amount, 0);
-            const totalDeductions = totalPmts + totalGastos + totalGars;
+            const totalGross = branchDetails.reduce((a, b) => a + b.total, 0);
+            const totalPmts = dayPmts.reduce((a, b) => a + b.amount, 0);
+            const totalExtras = dayExtras.reduce((a, b) => a + b.amount, 0);
+            const totalDeductions = totalPmts + totalExtras;
             const totalDay = totalGross - totalDeductions;
-            const totalTerms = dayTerminals.reduce((a, t) => a + t.amount, 0);
+            const totalTerms = dayTerminals.reduce((a, b) => a + b.amount, 0);
             const totalCash = totalDay - totalTerms;
 
-            return { totalGross, totalDeductions, totalDay, totalCash, detailByBranch, groupedPayments, dayExtras, dayTerminals };
-          }, [selectedDate, branchClosures, payments, terminalEntries, extraExpenses, activeBranches, sellers]);
+            return { branchDetails, totalGross, totalDeductions, totalDay, totalCash, dayPmts, dayExtras, dayTerminals };
+        }
 
-          const copySummaryText = () => {
-            const formattedDate = formatDateSpanish(selectedDate);
-            const branchLines = summaryData.detailByBranch.map(b => `${b.name}: $${formatCurrency(b.total)}`).join('\n');
-            const paymentLines = Object.values(summaryData.groupedPayments).map(p => `- Pago ${p.name}: $${formatCurrency(p.amount)}`).join('\n');
-            const extraLines = summaryData.dayExtras.filter(e => e.amount > 0).map(e => `- ${e.type === 'gasto' ? e.description : 'Garantía'}: $${formatCurrency(e.amount)}`).join('\n');
+        function copyReport() {
+            const t = calculateTotals();
+            const dateStr = formatDateSpanish(state.selectedDate);
             
-            const terminalLines = activeTerminals.map(t => {
-              const amt = terminalEntries.filter(te => te.date === selectedDate && te.terminalId === t.id).reduce((a, b) => a + b.amount, 0);
-              return amt > 0 ? `- ${t.name}: $${formatCurrency(amt)}` : '';
+            const branchLines = t.branchDetails.map(b => `${b.name}: $${formatCurrency(b.total)}`).join('\n');
+            const pmtLines = state.sellers.filter(s => s.active).map(s => {
+                const amt = t.dayPmts.filter(x => x.sellerId === s.id).reduce((a, b) => a + b.amount, 0);
+                return amt > 0 ? `- Pago ${s.name}: $${formatCurrency(amt)}` : '';
+            }).filter(Boolean).join('\n');
+            
+            const extraLines = t.dayExtras.filter(e => e.amount > 0).map(e => `- ${e.description}: $${formatCurrency(e.amount)}`).join('\n');
+            
+            const terminalLines = state.terminals.filter(x => x.active).map(term => {
+                const amt = t.dayTerminals.filter(x => x.terminalId === term.id).reduce((a, b) => a + b.amount, 0);
+                return amt > 0 ? `- ${term.name}: $${formatCurrency(amt)}` : '';
             }).filter(Boolean).join('\n');
 
-            const text = `${formattedDate}
+            const text = `${dateStr}
 
 DETALLE SUCURSALES:
 ${branchLines}
-TOTAL VENTAS: $${formatCurrency(summaryData.totalGross)}
+TOTAL VENTAS: $${formatCurrency(t.totalGross)}
 
 DEDUCCIONES:
-${paymentLines}${paymentLines && extraLines ? '\n' : ''}${extraLines}
-TOTAL DEDUCCIONES: $${formatCurrency(summaryData.totalDeductions)}
+${pmtLines}${pmtLines && extraLines ? '\n' : ''}${extraLines}
+TOTAL DEDUCCIONES: $${formatCurrency(t.totalDeductions)}
 
-*TOTAL DÍA: $${formatCurrency(summaryData.totalDay)}*
-${terminalLines ? terminalLines + '\n' : ''}TOTAL EFECTIVO: $${formatCurrency(summaryData.totalCash)}`;
+*TOTAL DÍA: $${formatCurrency(t.totalDay)}*
+${terminalLines ? terminalLines + '\n' : ''}TOTAL EFECTIVO: $${formatCurrency(t.totalCash)}`;
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Resumen copiado al portapapeles');
+            });
+        }
+
+        function renderSettingsView(container) {
+            let html = `<div class="bg-white p-5 rounded-3xl shadow-sm border space-y-6">
+                <h2 class="font-black text-lg flex items-center gap-2"><i data-lucide="settings"></i> Ajustes de Listas</h2>`;
             
-            navigator.clipboard.writeText(text);
-            alert('Resumen copiado con comas y formato correcto');
-          };
+            const sections = [
+                { label: 'Vendedores', key: 'sellers' },
+                { label: 'Sucursales', key: 'branches' },
+                { label: 'Terminales', key: 'terminals' }
+            ];
 
-          const themeCols = {
-            indigo: 'text-indigo-600 bg-indigo-50 border-indigo-100',
-            emerald: 'text-emerald-600 bg-emerald-50 border-emerald-100',
-            rose: 'text-rose-600 bg-rose-50 border-rose-100',
-            amber: 'text-amber-600 bg-amber-50 border-amber-100',
-            slate: 'text-slate-600 bg-slate-50 border-slate-100'
-          };
-
-          const inputBase = "w-full p-3 rounded-xl font-black text-right shadow-inner border focus:ring-2 focus:ring-indigo-300 outline-none transition-all";
-
-          return (
-            <div className={`min-h-screen pb-24 ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
-              <header className={`p-4 sticky top-0 z-50 flex justify-between items-center transition-colors ${themeCols[theme]}`}>
-                <div className="flex items-center gap-3">
-                  <Triangle size={24} fill="currentColor" />
-                  <h1 className="text-xl font-black tracking-tighter">TRIANGULO APP</h1>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={persistData} className="p-2 bg-white/50 rounded-full hover:scale-110 active:scale-95 transition-all">
-                    <Save size={20} className={saveStatus === 'success' ? 'text-green-500' : ''} />
-                  </button>
-                  <button onClick={() => setView('settings')} className="p-2 bg-white/50 rounded-full">
-                    <Settings size={20} />
-                  </button>
-                </div>
-              </header>
-
-              <div className={`p-2 border-b flex items-center justify-between sticky top-[64px] z-40 backdrop-blur-md ${isDarkMode ? 'bg-gray-900/80 border-gray-800' : 'bg-white/80 border-gray-100'}`}>
-                <button onClick={() => { const d = new Date(selectedDate + 'T12:00:00'); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-2"><ChevronLeft size={24} /></button>
-                <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-                  <Calendar size={18} />
-                  <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-sm font-bold focus:outline-none" />
-                </div>
-                <button onClick={() => { const d = new Date(selectedDate + 'T12:00:00'); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-2"><ChevronRight size={24} /></button>
-              </div>
-
-              <main className="p-4 max-w-lg mx-auto w-full space-y-4">
-                {(view === 'morning' || view === 'afternoon') && (
-                  <div className={`p-4 rounded-3xl shadow-sm border ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'}`}>
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-50">Ventas {view === 'morning' ? 'Mañana' : 'Tarde'}</h2>
-                    <div className="space-y-3">
-                      {activeSellers.map(s => {
-                        const amt = sales.find(x => x.date === selectedDate && x.sellerId === s.id && x.shift === view)?.amount || 0;
-                        return (
-                          <div key={s.id} className="flex items-center justify-between p-2 rounded-2xl border bg-opacity-50">
-                            <span className="font-bold text-sm ml-2">{s.name}</span>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40 font-bold">$</span>
-                              <input type="number" value={amt || ''} onChange={(e) => {
-                                const val = parseFloat(e.target.value) || 0;
-                                setSales(prev => [...prev.filter(x => !(x.date === selectedDate && x.sellerId === s.id && x.shift === view)), {date: selectedDate, sellerId: s.id, amount: val, shift: view}]);
-                              }} className={`w-28 pl-7 pr-3 py-2 rounded-xl text-right font-black ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-transparent'} focus:ring-2 focus:ring-indigo-300 outline-none`} />
-                            </div>
-                          </div>
-                        );
-                      })}
+            sections.forEach(sec => {
+                html += `<div class="space-y-2">
+                    <div class="flex justify-between items-center border-b pb-1">
+                        <span class="text-[10px] font-black uppercase opacity-40 tracking-widest">${sec.label}</span>
+                        <button onclick="addItem('${sec.key}')" class="p-1 bg-indigo-600 text-white rounded-full"><i data-lucide="plus" size="14"></i></button>
                     </div>
-                  </div>
-                )}
-
-                {view === 'payments' && (
-                  <div className={`p-4 rounded-3xl shadow-sm border ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'}`}>
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-50">Pagos a Vendedores</h2>
-                    {activeSellers.map(s => (
-                      <div key={s.id} className="p-3 mb-3 border rounded-2xl bg-gray-50/30">
-                        <p className="font-bold mb-3 ml-1">{s.name}</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input type="number" placeholder="Mañana $" value={payments.find(x => x.date === selectedDate && x.sellerId === s.id && x.shift === 'morning')?.amount || ''} onChange={(e) => setPayments(prev => [...prev.filter(x => !(x.date === selectedDate && x.sellerId === s.id && x.shift === 'morning')), {date: selectedDate, sellerId: s.id, amount: parseFloat(e.target.value) || 0, shift: 'morning'}])} className={`${inputBase} bg-yellow-50 border-yellow-100 text-yellow-700`} />
-                          <input type="number" placeholder="Tarde $" value={payments.find(x => x.date === selectedDate && x.sellerId === s.id && x.shift === 'afternoon')?.amount || ''} onChange={(e) => setPayments(prev => [...prev.filter(x => !(x.date === selectedDate && x.sellerId === s.id && x.shift === 'afternoon')), {date: selectedDate, sellerId: s.id, amount: parseFloat(e.target.value) || 0, shift: 'afternoon'}])} className={`${inputBase} bg-blue-50 border-blue-100 text-blue-700`} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {view === 'summary' && (
-                  <div className="space-y-4">
-                    <div className={`p-4 rounded-3xl shadow-sm border ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'}`}>
-                      <h2 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-50 flex items-center gap-2"><ClipboardCheck size={16}/> Cierre Sucursales</h2>
-                      {activeBranches.map(br => (
-                        <div key={br.id} className="mb-4">
-                          <p className="text-xs font-black uppercase mb-2 ml-1 opacity-80">{br.name}</p>
-                          <div className="grid grid-cols-2 gap-3">
-                            <input type="number" placeholder="Mañana" value={branchClosures.find(x => x.date === selectedDate && x.branchId === br.id)?.morningAmount || ''} onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              setBranchClosures(prev => {
-                                const ex = prev.find(x => x.date === selectedDate && x.branchId === br.id);
-                                const fil = prev.filter(x => !(x.date === selectedDate && x.branchId === br.id));
-                                return [...fil, ex ? { ...ex, morningAmount: val } : { date: selectedDate, branchId: br.id, morningAmount: val, afternoonAmount: 0 }];
-                              });
-                            }} className={`${inputBase} bg-yellow-50/50 text-yellow-800`} />
-                            <input type="number" placeholder="Tarde" value={branchClosures.find(x => x.date === selectedDate && x.branchId === br.id)?.afternoonAmount || ''} onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              setBranchClosures(prev => {
-                                const ex = prev.find(x => x.date === selectedDate && x.branchId === br.id);
-                                const fil = prev.filter(x => !(x.date === selectedDate && x.branchId === br.id));
-                                return [...fil, ex ? { ...ex, afternoonAmount: val } : { date: selectedDate, branchId: br.id, morningAmount: 0, afternoonAmount: val }];
-                              });
-                            }} className={`${inputBase} bg-blue-50/50 text-blue-800`} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className={`p-4 rounded-3xl shadow-sm border ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'}`}>
-                      <h2 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-50">Extras y Terminales</h2>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black opacity-40 uppercase ml-1">Gastos (M/T)</label>
-                          <input type="number" placeholder="M" value={extraExpenses.find(x => x.date === selectedDate && x.type === 'gasto' && x.shift === 'morning')?.amount || ''} onChange={(e) => setExtraExpenses(prev => [...prev.filter(x => !(x.date === selectedDate && x.type === 'gasto' && x.shift === 'morning')), {date: selectedDate, type: 'gasto', amount: parseFloat(e.target.value) || 0, shift: 'morning', description: 'Gasto'}])} className="w-full p-2 bg-rose-50 border rounded-lg mb-1 text-right font-bold" />
-                          <input type="number" placeholder="T" value={extraExpenses.find(x => x.date === selectedDate && x.type === 'gasto' && x.shift === 'afternoon')?.amount || ''} onChange={(e) => setExtraExpenses(prev => [...prev.filter(x => !(x.date === selectedDate && x.type === 'gasto' && x.shift === 'afternoon')), {date: selectedDate, type: 'gasto', amount: parseFloat(e.target.value) || 0, shift: 'afternoon', description: 'Gasto'}])} className="w-full p-2 bg-rose-50 border rounded-lg text-right font-bold" />
-                        </div>
-                        {activeTerminals.map(t => (
-                          <div key={t.id} className="space-y-1">
-                            <label className="text-[9px] font-black opacity-40 uppercase ml-1">{t.name}</label>
-                            <input type="number" placeholder="M" value={terminalEntries.find(x => x.date === selectedDate && x.terminalId === t.id && x.shift === 'morning')?.amount || ''} onChange={(e) => setTerminalEntries(prev => [...prev.filter(x => !(x.date === selectedDate && x.terminalId === t.id && x.shift === 'morning')), {date: selectedDate, terminalId: t.id, amount: parseFloat(e.target.value) || 0, shift: 'morning'}])} className="w-full p-2 bg-emerald-50 border rounded-lg mb-1 text-right font-bold" />
-                            <input type="number" placeholder="T" value={terminalEntries.find(x => x.date === selectedDate && x.terminalId === t.id && x.shift === 'afternoon')?.amount || ''} onChange={(e) => setTerminalEntries(prev => [...prev.filter(x => !(x.date === selectedDate && x.terminalId === t.id && x.shift === 'afternoon')), {date: selectedDate, terminalId: t.id, amount: parseFloat(e.target.value) || 0, shift: 'afternoon'}])} className="w-full p-2 bg-emerald-50 border rounded-lg text-right font-bold" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className={`p-6 rounded-[2.5rem] shadow-xl border cursor-pointer active:scale-95 transition-all ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-indigo-100'}`} onClick={copySummaryText}>
-                      <div className="flex justify-between items-center mb-6">
-                        <h2 className="font-black text-xl text-indigo-600 tracking-tighter">{formatDateSpanish(selectedDate)}</h2>
-                        <Copy size={20} className="text-indigo-300" />
-                      </div>
-                      <div className="space-y-3 border-b border-dashed pb-5 mb-5">
-                        {summaryData.detailByBranch.map((b, i) => (
-                          <div key={i} className="flex justify-between text-sm items-center">
-                            <span className="text-gray-500 font-medium">{b.name}</span>
-                            <span className="font-bold tracking-tight">$ {formatCurrency(b.total)}</span>
-                          </div>
-                        ))}
-                        <div className="flex justify-between font-black text-lg text-indigo-600 pt-2">
-                          <span>TOTAL VENTAS</span>
-                          <span>$ {formatCurrency(summaryData.totalGross)}</span>
-                        </div>
-                      </div>
-                      <div className="space-y-1 mb-6">
-                        <p className="text-[9px] font-black uppercase opacity-40 mb-2">Deducciones</p>
-                        <div className="flex justify-between text-sm text-rose-500">
-                          <span className="font-medium italic">Pagos y Gastos</span>
-                          <span className="font-bold">-$ {formatCurrency(summaryData.totalDeductions)}</span>
-                        </div>
-                        <div className="flex justify-between font-black border-t border-gray-100 pt-2 mt-2 text-gray-700">
-                          <span className="uppercase text-xs">Saldo Neto Día</span>
-                          <span>$ {formatCurrency(summaryData.totalDay)}</span>
-                        </div>
-                      </div>
-                      <div className="bg-indigo-600 p-6 rounded-3xl text-white text-center relative overflow-hidden shadow-lg shadow-indigo-200">
-                        <p className="text-xs font-black uppercase opacity-70 mb-1">Efectivo Total a Entregar</p>
-                        <p className="text-5xl font-black tracking-tighter">$ {formatCurrency(summaryData.totalCash)}</p>
-                        <Banknote size={100} className="absolute -right-6 -bottom-6 opacity-10 rotate-12" />
-                      </div>
-                      <p className="text-[10px] text-center mt-4 font-black text-indigo-400 uppercase tracking-widest animate-pulse">Toca para copiar resumen</p>
-                    </div>
-                  </div>
-                )}
-
-                {view === 'settings' && (
-                  <div className="space-y-4">
-                    <div className={`p-4 rounded-3xl shadow-sm border ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'}`}>
-                      <h2 className="font-black text-lg mb-4 flex items-center gap-2"><Settings size={20}/> Ajustes</h2>
-                      <div className="flex items-center justify-between p-3 bg-gray-50/50 rounded-2xl border border-gray-100">
-                        <span className="text-sm font-bold">Modo Oscuro</span>
-                        <button onClick={() => setIsDarkMode(!isDarkMode)} className={`w-12 h-6 rounded-full transition-all relative ${isDarkMode ? 'bg-indigo-600' : 'bg-gray-300'}`}>
-                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isDarkMode ? 'left-7' : 'left-1'}`} />
+                    <div class="space-y-2">`;
+                
+                state[sec.key].forEach(item => {
+                    html += `
+                    <div class="flex gap-2 items-center bg-gray-50 p-2 rounded-xl border border-gray-100">
+                        <input type="text" value="${item.name}" 
+                            oninput="updateItemName('${sec.key}', '${item.id}', this.value)"
+                            class="flex-1 bg-transparent text-xs font-bold outline-none">
+                        <button onclick="toggleItem('${sec.key}', '${item.id}')" 
+                            class="p-1.5 rounded-lg ${item.active ? 'text-indigo-600 bg-indigo-50' : 'text-gray-300'}">
+                            <i data-lucide="${item.active ? 'eye' : 'eye-off'}" size="16"></i>
                         </button>
-                      </div>
-                      <div className="mt-6 space-y-4">
-                        {['Vendedores', 'Sucursales', 'Terminales'].map((label, idx) => (
-                          <div key={idx} className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-black uppercase opacity-40 tracking-widest">{label}</span>
-                              <button onClick={() => {
-                                const id = Date.now().toString();
-                                if (idx === 0) setSellers([...sellers, {id, name: `Vendedor ${sellers.length+1}`, active: true, order: sellers.length}]);
-                                else if (idx === 1) setBranches([...branches, {id, name: `Sucursal ${branches.length+1}`, active: true, order: branches.length}]);
-                                else setTerminals([...terminals, {id, name: `Terminal ${terminals.length+1}`, active: true, order: terminals.length}]);
-                              }} className="p-1 bg-indigo-500 text-white rounded-full"><Plus size={16}/></button>
-                            </div>
-                            <div className="space-y-2">
-                              {(idx === 0 ? sellers : idx === 1 ? branches : terminals).map(item => (
-                                <div key={item.id} className="flex gap-2 items-center bg-gray-50/50 p-2 rounded-xl border border-gray-100">
-                                  <input type="text" value={item.name} onChange={(e) => {
-                                    const v = e.target.value;
-                                    if (idx === 0) setSellers(s => s.map(x => x.id === item.id ? {...x, name: v} : x));
-                                    else if (idx === 1) setBranches(s => s.map(x => x.id === item.id ? {...x, name: v} : x));
-                                    else setTerminals(s => s.map(x => x.id === item.id ? {...x, name: v} : x));
-                                  }} className="flex-1 bg-transparent text-xs font-bold outline-none" />
-                                  <button onClick={() => {
-                                     if (idx === 0) setSellers(s => s.map(x => x.id === item.id ? {...x, active: !x.active} : x));
-                                     else if (idx === 1) setBranches(s => s.map(x => x.id === item.id ? {...x, active: !x.active} : x));
-                                     else setTerminals(s => s.map(x => x.id === item.id ? {...x, active: !x.active} : x));
-                                  }} className={`p-1.5 rounded-lg ${item.active ? 'text-indigo-600 bg-indigo-50' : 'text-gray-300'}`}><Eye size={16}/></button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </main>
+                    </div>`;
+                });
+                html += `</div></div>`;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
 
-              <Navigation currentView={view} setView={setView} theme={theme} />
-            </div>
-          );
+        function addItem(key) {
+            const name = prompt('Nombre del nuevo registro:');
+            if (name) {
+                state[key].push({ id: Date.now().toString(), name, active: true });
+                saveState();
+                render();
+            }
+        }
+
+        function updateItemName(key, id, val) {
+            state[key] = state[key].map(x => x.id === id ? { ...x, name: val } : x);
+            saveState();
+        }
+
+        function toggleItem(key, id) {
+            state[key] = state[key].map(x => x.id === id ? { ...x, active: !x.active } : x);
+            saveState();
+            render();
+        }
+
+        // --- Init ---
+        window.onload = () => {
+            loadState();
+            render();
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
     </script>
 </body>
 </html>
