@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Triangulo App 2.0</title>
+    <!-- Tailwind CSS para el diseño -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Babel para transpilar JSX en el navegador -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         input[type="number"]::-webkit-inner-spin-button,
@@ -18,20 +21,167 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
         .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .animate-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
-<script type="importmap">
+    <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.460.0",
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-500">
     <div id="root"></div>
-    <script type="module" src="index.tsx"></script>
-</body>
-</html>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useMemo, useRef } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+          Sun, Moon, Banknote, ClipboardCheck, LayoutDashboard, Settings, Plus, 
+          Eye, EyeOff, Save, Download, Copy, Calendar, Upload, FileJson, 
+          ArrowUp, ArrowDown, Camera, X, ChevronLeft, ChevronRight, Triangle, 
+          Receipt, ShieldCheck, Palette, Percent, Calculator, TrendingUp, MessageSquareText 
+        } from 'lucide-react';
+
+        // --- Componente de Navegación ---
+        const Navigation = ({ currentView, setView, theme }) => {
+          const navItems = [
+            { id: 'morning', label: 'Mañana', icon: Sun },
+            { id: 'afternoon', label: 'Tarde', icon: Moon },
+            { id: 'payments', label: 'Pagos', icon: Banknote },
+            { id: 'closure', label: 'Cierre', icon: ClipboardCheck },
+            { id: 'summary', label: 'Resumen', icon: LayoutDashboard },
+          ];
+
+          const themeActiveColors = {
+            indigo: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30',
+            emerald: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30',
+            rose: 'text-rose-500 bg-rose-50 dark:bg-rose-900/30',
+            amber: 'text-amber-500 bg-amber-50 dark:bg-amber-900/30',
+            slate: 'text-slate-500 bg-slate-50 dark:bg-slate-900/30'
+          };
+
+          return (
+            <nav className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-950/90 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800 px-2 py-2 pb-safe z-50 transition-colors shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+              <div className="flex justify-around items-center max-w-lg mx-auto gap-1">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentView === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setView(item.id)}
+                      className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-300 flex-1 ${
+                        isActive 
+                          ? `${themeActiveColors[theme]} scale-105 shadow-sm` 
+                          : 'text-gray-400 dark:text-gray-500 hover:text-gray-600'
+                      }`}
+                    >
+                      <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                      <span className={`text-[8px] mt-1 font-black uppercase text-center leading-none tracking-tight ${isActive ? 'opacity-100' : 'opacity-60'}`}>
+                        {item.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          );
+        };
+
+        // --- Aplicación Principal ---
+        const App = () => {
+          const [view, setView] = useState('morning');
+          const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+          const [theme, setTheme] = useState('indigo');
+          const [isDarkMode, setIsDarkMode] = useState(false);
+          const [saveStatus, setSaveStatus] = useState('idle');
+          
+          const [sellers, setSellers] = useState([]);
+          const [branches, setBranches] = useState([]);
+          const [terminals, setTerminals] = useState([]);
+          const [sales, setSales] = useState([]);
+          const [payments, setPayments] = useState([]);
+          const [branchClosures, setBranchClosures] = useState([]);
+          const [terminalEntries, setTerminalEntries] = useState([]);
+          const [extraExpenses, setExtraExpenses] = useState([]);
+
+          const [commissionModal, setCommissionModal] = useState({ show: false, sellerId: '', shift: 'morning', tempType: 'none', tempM20: 0, tempM25: 0 });
+          const [conceptModal, setConceptModal] = useState({ show: false, type: 'gasto', tempDescription: '' });
+          const [paymentCalcModal, setPaymentCalcModal] = useState({ 
+            show: false, sellerId: '', 
+            startDate: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0], 
+            endDate: new Date().toISOString().split('T')[0], 
+            baseSalary: 0 
+          });
+
+          const photoInputRef = useRef(null);
+          const backupInputRef = useRef(null);
+          const [targetIdForPhoto, setTargetIdForPhoto] = useState(null);
+
+          // Cargar datos al iniciar
+          useEffect(() => {
+            const data = localStorage.getItem('vendas_app_data');
+            if (data) {
+              const parsed = JSON.parse(data);
+              setSellers(parsed.sellers || []);
+              setBranches(parsed.branches || []);
+              setTerminals(parsed.terminals || []);
+              setSales(parsed.sales || []);
+              setPayments(parsed.payments || []);
+              setBranchClosures(parsed.branchClosures || []);
+              setTerminalEntries(parsed.terminalEntries || []);
+              setExtraExpenses(parsed.extraExpenses || []);
+              if (parsed.theme) setTheme(parsed.theme);
+              if (parsed.isDarkMode !== undefined) setIsDarkMode(parsed.isDarkMode);
+            } else {
+              setSellers([{ id: '1', name: 'Vendedor 1', active: true, order: 0 }]);
+              setBranches([{ id: '1', name: 'Sucursal Central', active: true, order: 0 }]);
+              setTerminals([{ id: '1', name: 'Terminal A', active: true, order: 0 }]);
+            }
+          }, []);
+
+          // Guardar datos en cada cambio
+          useEffect(() => {
+            const data = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
+            localStorage.setItem('vendas_app_data', JSON.stringify(data));
+          }, [sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode]);
+
+          useEffect(() => {
+            document.documentElement.classList.toggle('dark', isDarkMode);
+          }, [isDarkMode]);
+
+          const persistData = () => {
+            setSaveStatus('success');
+            setTimeout(() => setSaveStatus('idle'), 1500);
+          };
+
+          // Exportar Backup
+          const exportBackup = () => {
+            const data = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `triangulo_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          };
+
+          // Importar Backup
+          const handleImportBackup = (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              try {
+                const parsed = JSON.parse(e.target.result);
+                if
