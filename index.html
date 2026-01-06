@@ -5,19 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TRIANGULO APP</title>
     
-    <!-- Meta etiquetas para comportamiento de App Nativa (iOS y Android) -->
+    <!-- Configuración App Nativa (iOS y Android) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Triangulo">
-    <meta name="application-name" content="Triangulo">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#6366f1">
-    
-    <!-- Web App Manifest integrado -->
-    <link rel="manifest" href='data:application/manifest+json,{"name":"TRIANGULO APP","short_name":"Triangulo","start_url":".","display":"standalone","background_color":"#ffffff","theme_color":"#6366f1","orientation":"portrait","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/5968/5968322.png","sizes":"512x512","type":"image/png"}]}'>
-    
-    <!-- Icono para iOS -->
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5968/5968322.png">
+    <meta name="application-name" content="Triangulo">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Icono SVG Profesional Integrado -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='black'/%3E%3Cg transform='translate(0, -20)'%3E%3Cpath d='M256 60 L460 400 L52 400 Z' fill='red'/%3E%3Cpath d='M256 110 L410 375 L102 375 Z' fill='black'/%3E%3Cpath d='M256 160 L360 350 L152 350 Z' fill='red'/%3E%3Cpath d='M256 210 L310 325 L202 325 Z' fill='black'/%3E%3Cpath d='M256 260 L285 305 L227 305 Z' fill='red'/%3E%3Cpath d='M256 280 L270 300 L242 300 Z' fill='black'/%3E%3C/g%3E%3Ctext x='256' y='465' font-family='Inter, sans-serif' font-weight='900' font-size='48' fill='white' text-anchor='middle'%3ETRIANGULO APP%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='black'/%3E%3Cg transform='translate(0, -20)'%3E%3Cpath d='M256 60 L460 400 L52 400 Z' fill='red'/%3E%3Cpath d='M256 110 L410 375 L102 375 Z' fill='black'/%3E%3Cpath d='M256 160 L360 350 L152 350 Z' fill='red'/%3E%3Cpath d='M256 210 L310 325 L202 325 Z' fill='black'/%3E%3Cpath d='M256 260 L285 305 L227 305 Z' fill='red'/%3E%3Cpath d='M256 280 L270 300 L242 300 Z' fill='black'/%3E%3C/g%3E%3Ctext x='256' y='465' font-family='Inter, sans-serif' font-weight='900' font-size='48' fill='white' text-anchor='middle'%3ETRIANGULO APP%3C/text%3E%3C/svg%3E">
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"TRIANGULO APP","short_name":"Triangulo","start_url":".","display":"standalone","background_color":"#000000","theme_color":"#000000","orientation":"portrait","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='black'/%3E%3Cg transform='translate(0, -20)'%3E%3Cpath d='M256 60 L460 400 L52 400 Z' fill='red'/%3E%3Cpath d='M256 110 L410 375 L102 375 Z' fill='black'/%3E%3Cpath d='M256 160 L360 350 L152 350 Z' fill='red'/%3E%3Cpath d='M256 210 L310 325 L202 325 Z' fill='black'/%3E%3Cpath d='M256 260 L285 305 L227 305 Z' fill='red'/%3E%3Cpath d='M256 280 L270 300 L242 300 Z' fill='black'/%3E%3C/g%3E%3Ctext x='256' y='465' font-family='Inter, sans-serif' font-weight='900' font-size='48' fill='white' text-anchor='middle'%3ETRIANGULO APP%3C/text%3E%3C/svg%3E","sizes":"512x512","type":"image/svg+xml"}]}'>
 
     <!-- Librerías Externas via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
@@ -79,7 +80,6 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // --- FUNCIONES DE UTILIDAD GLOBALES ---
         const getDayOfWeek = (dateStr) => {
             if (!dateStr) return '';
             const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -167,7 +167,6 @@
         };
 
         const App = () => {
-            // --- ESTADO ---
             const [view, setView] = useState('morning');
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
             const [theme, setTheme] = useState('indigo');
@@ -487,13 +486,11 @@
                 const s = summaryData; 
                 let text = `${getFormattedDateLong(s.date)}\n\n`;
                 
-                // Sucursales
                 s.detailByBranch.forEach(b => { 
                     text += `- ${b.name}: $${formatCurrency(b.total)}\n`; 
                 });
                 text += `TOTAL VENTAS: $${formatCurrency(s.totalGross)}\n\n`;
                 
-                // Deducciones
                 text += `DEDUCCIONES\n`;
                 s.paymentsBySeller.forEach(p => { 
                     text += `- Pago ${p.name}: $${formatCurrency(p.amount)}\n`; 
@@ -503,10 +500,8 @@
                 });
                 text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n`;
                 
-                // Totales
                 text += `*TOTAL DÍA: $${formatCurrency(s.totalDay)}*\n`;
                 
-                // Terminales Bancarias (Subidas justo debajo de Total Día)
                 activeTerminals.forEach(t => {
                     const amt = getTerminalAmountLocal(t.id, 'morning') + getTerminalAmountLocal(t.id, 'afternoon');
                     if (amt > 0) {
@@ -514,7 +509,6 @@
                     }
                 });
                 
-                // Total Efectivo (Sube debajo de la última terminal)
                 text += `TOTAL EFECTIVO: $${formatCurrency(s.totalCash)}`;
                 
                 navigator.clipboard.writeText(text); 
@@ -713,7 +707,7 @@
                                 <div className={`${cardBgClass} p-6 rounded-3xl shadow-xl border`}>
                                     <div className="space-y-4">
                                         <div><h3 className="text-[10px] font-black uppercase text-gray-400 mb-2 border-b">Sucursales</h3>{summaryData.detailByBranch.map((b, i) => (<div key={i} className="flex justify-between text-sm py-1 border-b border-gray-50"><span className="text-gray-500">{b.name}</span><span className="font-black">$ {formatCurrency(b.total)}</span></div>))}<div className={`flex justify-between font-black text-lg pt-2 ${themeClass}`}><span>TOTAL VENTAS</span><span>$ {formatCurrency(summaryData.totalGross)}</span></div></div>
-                                        <div className="pt-4 border-t"><h3 className="text-[10px] font-black uppercase text-gray-400 mb-2">Deducciones</h3>{summaryData.paymentsBySeller.map((p, i) => (<div key={i} className="flex justify-between text-xs py-1"><span className="italic text-gray-400">{p.name}</span><span className="font-bold text-rose-500">-$ {formatCurrency(p.amount)}</span></div>))}{Object.entries(summaryData.groupedExtras).map(([k, d]) => (<div key={k} className="flex justify-between text-sm py-1"><span className="text-gray-500">{k}:</span><span className="font-black text-rose-500">-$ {formatCurrency(d.amount)}</span></div>))}<div className="flex justify-between font-black text-lg pt-4 border-t"><span>TOTAL DÍA</span><span>$ {formatCurrency(summaryData.totalDay)}</span></div><div className="flex justify-between text-sm pt-2"><span className="text-gray-400">Terminales:</span><span className="font-black text-emerald-600">-$ {formatCurrency(summaryData.totalTerminals)}</span></div></div>
+                                        <div className="pt-4 border-t"><h3 className="text-[10px] font-black uppercase text-gray-400 mb-2">Deducciones</h3>{summaryData.paymentsBySeller.map((p, i) => (<div key={i} className="flex justify-between text-xs py-1"><span className="italic text-gray-400">{p.name}</span><span className="font-bold text-rose-500">-$ {formatCurrency(p.amount)}</span></div>))}{Object.entries(summaryData.groupedExtras).map(([k, d]) => (<div key={k} className="flex justify-between text-sm py-1"><span className="text-gray-500">{k}:</span><span className="font-black text-rose-500">-$ {formatCurrency(d.amount)}</span></div>))}<div className="flex justify-between font-black text-lg pt-4 border-t"><span>TOTAL DÍA</span><span>$ {formatCurrency(summaryData.totalDay)}</span></div><div className="flex flex-col gap-1 pt-2">{activeTerminals.map(t => { const amt = getTerminalAmountLocal(t.id, 'morning') + getTerminalAmountLocal(t.id, 'afternoon'); if (amt > 0) return <div key={t.id} className="flex justify-between text-sm italic opacity-70"><span className="text-gray-400">{t.name}:</span><span className="font-black text-emerald-600">-$ {formatCurrency(amt)}</span></div>; return null; })}</div></div>
                                         <button onClick={copySummaryText} className={`w-full ${getThemeClass('bg')} ${getThemeClass('headerText')} p-6 rounded-2xl shadow-lg border-2 ${getThemeClass('border')} text-center relative overflow-hidden transition-all active:scale-[0.98]`}><p className="text-xs uppercase font-black opacity-60 mb-1">Efectivo Total</p><p className="text-5xl font-black">$ {formatCurrency(summaryData.totalCash)}</p><LucideIcon name="banknote" size={100} className="absolute -right-4 -bottom-4 opacity-10 rotate-12" /></button>
                                     </div>
                                 </div>
@@ -753,7 +747,7 @@
                                                         <div className="relative" onClick={() => { setTargetIdForPhoto({ id: item.id, type: section.type }); photoInputRef.current.click(); }}><VisualPreview source={item.image} isDarkMode={isDarkMode} /><div className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow-sm border"><LucideIcon name="camera" size={10} /></div></div>
                                                         <input type="text" value={item.name} onChange={(e) => {
                                                             const n = e.target.value; 
-                                                            if (section.type === 'seller') setSellers(prev => prev.map(s => s.id === item.id ? {...s, name: n} : s)); else if (section.type === 'branch') setBranches(prev => prev.map(b => b.id === item.id ? {...b, name: n} : b)); else setTerminals(prev => prev.map(t => t.id === id ? {...t, name: n} : t));
+                                                            if (section.type === 'seller') setSellers(prev => prev.map(s => s.id === item.id ? {...s, name: n} : s)); else if (section.type === 'branch') setBranches(prev => prev.map(b => b.id === item.id ? {...b, name: n} : b)); else setTerminals(prev => prev.map(t => t.id === item.id ? {...t, name: n} : t));
                                                         }} className="font-black text-sm bg-transparent border-none focus:ring-0 w-full outline-none" />
                                                     </div>
                                                     <button onClick={() => {
