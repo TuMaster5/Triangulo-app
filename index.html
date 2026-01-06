@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TRIANGULO APP 5.0 - Cloud Sync</title>
+    <title>TRIANGULO APP</title>
     
-    <!-- Meta etiquetas para comportamiento de App Nativa -->
+    <!-- Meta etiquetas para comportamiento de App Nativa (iOS y Android) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Triangulo">
+    <meta name="application-name" content="Triangulo">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#6366f1">
     
     <!-- Web App Manifest integrado -->
-    <link rel="manifest" href="data:application/manifest+json,{'name':'TRIANGULO APP','short_name':'Triangulo','start_url':'.','display':'standalone','background_color':'#ffffff','theme_color':'#6366f1','icons':[{'src':'https://cdn-icons-png.flaticon.com/512/5968/5968322.png','sizes':'512x512','type':'image/png'}]}">
+    <link rel="manifest" href='data:application/manifest+json,{"name":"TRIANGULO APP","short_name":"Triangulo","start_url":".","display":"standalone","background_color":"#ffffff","theme_color":"#6366f1","orientation":"portrait","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/5968/5968322.png","sizes":"512x512","type":"image/png"}]}'>
     
     <!-- Icono para iOS -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5968/5968322.png">
@@ -32,7 +33,6 @@
             font-family: 'Inter', sans-serif; 
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: contain;
-            /* Soporte para notch y barras de sistema */
             padding-top: env(safe-area-inset-top);
         }
         input[type="number"]::-webkit-inner-spin-button,
@@ -486,12 +486,27 @@
             const copySummaryText = () => {
                 const s = summaryData; 
                 let text = `${getFormattedDateLong(s.date)}\n\n`;
-                s.detailByBranch.forEach(b => { text += `- ${b.name}: $${formatCurrency(b.total)}\n`; });
-                text += `TOTAL VENTAS: $${formatCurrency(s.totalGross)}\n\nDEDUCCIONES\n`;
-                s.paymentsBySeller.forEach(p => { text += `- Pago ${p.name}: $${formatCurrency(p.amount)}\n`; });
-                Object.entries(s.groupedExtras).forEach(([k, d]) => { if (d.amount > 0) text += `- ${k}: $${formatCurrency(d.amount)}\n`; });
-                text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n*TOTAL DÍA: $${formatCurrency(s.totalDay)}*\n`;
                 
+                // Sucursales
+                s.detailByBranch.forEach(b => { 
+                    text += `- ${b.name}: $${formatCurrency(b.total)}\n`; 
+                });
+                text += `TOTAL VENTAS: $${formatCurrency(s.totalGross)}\n\n`;
+                
+                // Deducciones
+                text += `DEDUCCIONES\n`;
+                s.paymentsBySeller.forEach(p => { 
+                    text += `- Pago ${p.name}: $${formatCurrency(p.amount)}\n`; 
+                });
+                Object.entries(s.groupedExtras).forEach(([k, d]) => { 
+                    if (d.amount > 0) text += `- ${k}: $${formatCurrency(d.amount)}\n`; 
+                });
+                text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n`;
+                
+                // Totales
+                text += `*TOTAL DÍA: $${formatCurrency(s.totalDay)}*\n`;
+                
+                // Terminales Bancarias (Subidas justo debajo de Total Día)
                 activeTerminals.forEach(t => {
                     const amt = getTerminalAmountLocal(t.id, 'morning') + getTerminalAmountLocal(t.id, 'afternoon');
                     if (amt > 0) {
@@ -499,8 +514,11 @@
                     }
                 });
                 
+                // Total Efectivo (Sube debajo de la última terminal)
                 text += `TOTAL EFECTIVO: $${formatCurrency(s.totalCash)}`;
-                navigator.clipboard.writeText(text); alert('Resumen copiado');
+                
+                navigator.clipboard.writeText(text); 
+                alert('Resumen copiado');
             };
 
             const exportBackup = () => {
@@ -735,7 +753,7 @@
                                                         <div className="relative" onClick={() => { setTargetIdForPhoto({ id: item.id, type: section.type }); photoInputRef.current.click(); }}><VisualPreview source={item.image} isDarkMode={isDarkMode} /><div className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow-sm border"><LucideIcon name="camera" size={10} /></div></div>
                                                         <input type="text" value={item.name} onChange={(e) => {
                                                             const n = e.target.value; 
-                                                            if (section.type === 'seller') setSellers(prev => prev.map(s => s.id === item.id ? {...s, name: n} : s)); else if (section.type === 'branch') setBranches(prev => prev.map(b => b.id === item.id ? {...b, name: n} : b)); else setTerminals(prev => prev.map(t => t.id === item.id ? {...t, name: n} : t));
+                                                            if (section.type === 'seller') setSellers(prev => prev.map(s => s.id === item.id ? {...s, name: n} : s)); else if (section.type === 'branch') setBranches(prev => prev.map(b => b.id === item.id ? {...b, name: n} : b)); else setTerminals(prev => prev.map(t => t.id === id ? {...t, name: n} : t));
                                                         }} className="font-black text-sm bg-transparent border-none focus:ring-0 w-full outline-none" />
                                                     </div>
                                                     <button onClick={() => {
