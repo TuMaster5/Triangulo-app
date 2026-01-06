@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TRIANGULO APP 4.0 - Cloud Sync</title>
+    <title>TRIANGULO APP 5.0 - Cloud Sync</title>
     <!-- Librerías Externas via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
@@ -32,6 +32,26 @@
         
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-in { animation: fadeIn 0.3s ease-out forwards; }
+
+        /* Animaciones de Destello para el Triángulo */
+        @keyframes glow-success {
+            0% { filter: drop-shadow(0 0 2px #a3e635); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 12px #a3e635); transform: scale(1.1); }
+            100% { filter: drop-shadow(0 0 2px #a3e635); transform: scale(1); }
+        }
+        @keyframes glow-error {
+            0% { filter: drop-shadow(0 0 2px #ef4444); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 12px #ef4444); transform: scale(1.1); }
+            100% { filter: drop-shadow(0 0 2px #ef4444); transform: scale(1); }
+        }
+        @keyframes glow-loading {
+            0% { filter: drop-shadow(0 0 2px #6366f1); opacity: 0.6; }
+            50% { filter: drop-shadow(0 0 10px #6366f1); opacity: 1; }
+            100% { filter: drop-shadow(0 0 2px #6366f1); opacity: 0.6; }
+        }
+        .triangle-success { animation: glow-success 1.5s ease-in-out infinite; }
+        .triangle-error { animation: glow-error 1s ease-in-out infinite; }
+        .triangle-loading { animation: glow-loading 1.2s ease-in-out infinite; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-500">
@@ -51,25 +71,26 @@
         const Icon = ({ name, size = 24, className = "", fill = "none" }) => {
             const [iconElement, setIconElement] = useState(null);
             useEffect(() => {
-                if (window.lucide && window.lucide.icons[name]) {
+                if (window.lucide && window.lucide.icons[name.toLowerCase()]) {
+                    setIconElement(window.lucide.icons[name.toLowerCase()]);
+                } else if (window.lucide && window.lucide.icons[name]) {
                     setIconElement(window.lucide.icons[name]);
                 }
             }, [name]);
             if (!iconElement) return <div style={{ width: size, height: size }} />;
+            
+            // Note: Lucide React works differently in UMD. Fallback to simple svg rendering if needed.
             return (
-                <svg
-                    width={size}
-                    height={size}
-                    viewBox="0 0 24 24"
-                    fill={fill}
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className={className}
-                    dangerouslySetInnerHTML={{ __html: iconElement.map(i => `<${i[0]} ${Object.entries(i[1]).map(([k, v]) => `${k}="${v}"`).join(' ')} />`).join('') }}
-                />
+                <span dangerouslySetInnerHTML={{ __html: window.lucide.createIcons({
+                    icons: { [name]: iconElement },
+                    attrs: { width: size, height: size, class: className, fill: fill, stroke: 'currentColor', 'stroke-width': 2 }
+                }) }} />
             );
+        };
+
+        // Simplified Icon component for reliable rendering
+        const LucideIcon = ({ name, size = 24, className = "", fill = "none" }) => {
+            return <i data-lucide={name.toLowerCase()} className={className} style={{ width: size, height: size, color: 'currentColor' }}></i>;
         };
 
         const Navigation = ({ currentView, setView, theme }) => {
@@ -81,13 +102,18 @@
                 slate: { text: 'text-slate-600', activeBg: 'bg-slate-50' },
             };
             const navItems = [
-                { view: 'morning', icon: 'Sun', label: 'Mañana' },
-                { view: 'afternoon', icon: 'Moon', label: 'Tarde' },
-                { view: 'payments', icon: 'Wallet', label: 'Pagos' },
-                { view: 'closure', icon: 'ClipboardCheck', label: 'Cierre' },
-                { view: 'summary', icon: 'LayoutDashboard', label: 'Resumen' },
+                { view: 'morning', icon: 'sun', label: 'Mañana' },
+                { view: 'afternoon', icon: 'moon', label: 'Tarde' },
+                { view: 'payments', icon: 'wallet', label: 'Pagos' },
+                { view: 'closure', icon: 'clipboard-check', label: 'Cierre' },
+                { view: 'summary', icon: 'layout-dashboard', label: 'Resumen' },
             ];
             const colors = themeColors[theme] || themeColors.indigo;
+            
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [currentView]);
+
             return (
                 <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 px-2 py-1 z-50 transition-colors shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <div className="max-w-lg mx-auto flex justify-between items-center">
@@ -101,7 +127,7 @@
                                         isActive ? `${colors.activeBg} ${colors.text}` : 'text-gray-400'
                                     }`}
                                 >
-                                    <Icon name={item.icon} size={20} className={isActive ? 'scale-110' : ''} />
+                                    <LucideIcon name={item.icon} size={20} className={isActive ? 'scale-110' : ''} />
                                     <span className="text-[10px] font-black uppercase tracking-tight">{item.label}</span>
                                 </button>
                             );
@@ -139,6 +165,10 @@
             const photoInputRef = useRef(null);
             const [targetIdForPhoto, setTargetIdForPhoto] = useState(null);
             const statusTimeoutRef = useRef(null);
+
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [view]);
 
             useEffect(() => {
                 const loadData = async () => {
@@ -247,6 +277,11 @@
             const morningFieldBg = isDarkMode ? 'bg-yellow-400/20 border-yellow-500/30' : 'bg-yellow-50 border-yellow-100';
             const afternoonFieldBg = isDarkMode ? 'bg-blue-400/20 border-blue-500/30' : 'bg-blue-50 border-blue-100';
 
+            const formatCurrency = (val) => {
+                const n = Math.round(val);
+                return n.toLocaleString('en-US');
+            };
+
             const activeSellers = useMemo(() => sellers.filter(s => s.active).sort((a,b) => a.order - b.order), [sellers]);
             const activeBranches = useMemo(() => branches.filter(b => b.active).sort((a,b) => a.order - b.order), [branches]);
             const activeTerminals = useMemo(() => terminals.filter(t => t.active).sort((a,b) => a.order - b.order), [terminals]);
@@ -257,14 +292,18 @@
                 return [...activeSellers].sort((a, b) => {
                     const entryA = sales.find(s => s.date === selectedDate && s.sellerId === a.id && s.shift === shift);
                     const entryB = sales.find(s => s.date === selectedDate && s.sellerId === b.id && s.shift === shift);
-                    const hasA = entryA !== undefined; const hasB = entryB !== undefined;
-                    if (hasA && hasB) return entryB.amount - entryA.amount;
-                    if (hasA) return -1; if (hasB) return 1;
+                    
+                    const valA = entryA !== undefined ? entryA.amount : -1;
+                    const valB = entryB !== undefined ? entryB.amount : -1;
+                    
+                    if (valA !== -1 && valB !== -1) return valB - valA;
+                    if (valA !== -1) return -1;
+                    if (valB !== -1) return 1;
                     return a.order - b.order;
                 });
             }, [activeSellers, sales, selectedDate, view]);
 
-            const getSaleAmount = (sellerId, shift) => sales.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift)?.amount || 0;
+            const getSaleAmount = (sellerId, shift) => sales.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift)?.amount;
             const getSaleEntry = (sellerId, shift) => sales.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
             const getPaymentAmount = (sellerId, shift) => payments.find(p => p.date === selectedDate && p.sellerId === sellerId && p.shift === shift)?.amount || 0;
             const getBranchClosure = (branchId) => branchClosures.find(b => b.date === selectedDate && b.branchId === branchId) || { morningAmount: 0, afternoonAmount: 0 };
@@ -272,39 +311,19 @@
             const getExtraExpenseAmount = (type, shift) => extraExpenses.find(e => e.date === selectedDate && e.type === type && e.shift === shift)?.amount || 0;
 
             const handleSaleChange = (sellerId, shift, value) => {
-                const amount = parseFloat(value) || 0;
+                const amount = value === "" ? undefined : (parseFloat(value) || 0);
                 setSaveStatus('loading');
                 setSales(prev => {
                     const existing = prev.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
                     const filtered = prev.filter(s => !(s.date === selectedDate && s.sellerId === sellerId && s.shift === shift));
+                    if (amount === undefined) return filtered;
+                    
                     let entry = { ...existing, date: selectedDate, sellerId, amount, shift };
                     if (entry.commissionType && ['10', '20', '25'].includes(entry.commissionType)) {
                         entry.commission = amount * (parseFloat(entry.commissionType) / 100);
                     }
                     return [...filtered, entry];
                 });
-            };
-
-            const openCommissionModal = (sellerId, shift) => {
-                const entry = getSaleEntry(sellerId, shift);
-                setCommissionModal({ show: true, sellerId, shift, tempType: entry?.commissionType || 'none', tempM20: entry?.mixto20 || 0, tempM25: entry?.mixto25 || 0 });
-            };
-
-            const saveCommission = () => {
-                const { sellerId, shift, tempType, tempM20, tempM25 } = commissionModal;
-                setSaveStatus('loading');
-                setSales(prev => {
-                    const existing = prev.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
-                    const filtered = prev.filter(s => !(s.date === selectedDate && s.sellerId === sellerId && s.shift === shift));
-                    let amount = existing?.amount || 0;
-                    let commission = 0;
-                    if (tempType === '10') commission = amount * 0.10;
-                    else if (tempType === '20') commission = amount * 0.20;
-                    else if (tempType === '25') commission = amount * 0.25;
-                    else if (tempType === 'mixto') { commission = (tempM20 * 0.20) + (tempM25 * 0.25); amount = tempM20 + tempM25; }
-                    return [...filtered, { date: selectedDate, sellerId, amount, shift, commissionType: tempType, commission: tempType === 'none' ? undefined : commission, mixto20: tempType === 'mixto' ? tempM20 : undefined, mixto25: tempType === 'mixto' ? tempM25 : undefined }];
-                });
-                setCommissionModal(prev => ({ ...prev, show: false }));
             };
 
             const handlePaymentChange = (sellerId, shift, value) => {
@@ -357,6 +376,7 @@
             };
 
             const summaryData = useMemo(() => {
+                const daySales = sales.filter(s => s.date === selectedDate);
                 const dayClosures = branchClosures.filter(b => b.date === selectedDate);
                 const dayPayments = payments.filter(p => p.date === selectedDate);
                 const dayTerminals = terminalEntries.filter(t => t.date === selectedDate);
@@ -376,17 +396,22 @@
                 const totalTerminals = dayTerminals.reduce((acc, t) => acc + t.amount, 0);
                 const totalCash = totalDay - totalTerminals;
 
-                const morningSales = detailByBranch.reduce((acc, b) => acc + b.morning, 0);
-                const morningDeductions = dayPayments.filter(p => p.shift === 'morning').reduce((acc, p) => acc + p.amount, 0) +
-                                         dayExtras.filter(e => e.shift === 'morning').reduce((acc, e) => acc + e.amount, 0);
-                const morningTerminals = dayTerminals.filter(t => t.shift === 'morning').reduce((acc, t) => acc + t.amount, 0);
-                const morningCashTotal = morningSales - morningDeductions - morningTerminals;
+                const morningSalesTotal = daySales.filter(s => s.shift === 'morning').reduce((acc, s) => acc + s.amount, 0);
+                const afternoonSalesTotal = daySales.filter(s => s.shift === 'afternoon').reduce((acc, s) => acc + s.amount, 0);
 
-                const afternoonSales = detailByBranch.reduce((acc, b) => acc + b.afternoon, 0);
-                const afternoonDeductions = dayPayments.filter(p => p.shift === 'afternoon').reduce((acc, p) => acc + p.amount, 0) +
-                                           dayExtras.filter(e => e.shift === 'afternoon').reduce((acc, e) => acc + e.amount, 0);
+                const morningPaymentsTotal = dayPayments.filter(p => p.shift === 'morning').reduce((acc, p) => acc + p.amount, 0);
+                const afternoonPaymentsTotal = dayPayments.filter(p => p.shift === 'afternoon').reduce((acc, p) => acc + p.amount, 0);
+
+                // Cálculos de efectivo por turno
+                const morningBranchCash = dayClosures.reduce((acc, b) => acc + b.morningAmount, 0);
+                const morningExtras = dayExtras.filter(e => e.shift === 'morning').reduce((acc, e) => acc + e.amount, 0);
+                const morningTerminals = dayTerminals.filter(t => t.shift === 'morning').reduce((acc, t) => acc + t.amount, 0);
+                const morningCashFinal = morningBranchCash - morningPaymentsTotal - morningExtras - morningTerminals;
+
+                const afternoonBranchCash = dayClosures.reduce((acc, b) => acc + b.afternoonAmount, 0);
+                const afternoonExtras = dayExtras.filter(e => e.shift === 'afternoon').reduce((acc, e) => acc + e.amount, 0);
                 const afternoonTerminals = dayTerminals.filter(t => t.shift === 'afternoon').reduce((acc, t) => acc + t.amount, 0);
-                const afternoonCashTotal = afternoonSales - afternoonDeductions - afternoonTerminals;
+                const afternoonCashFinal = afternoonBranchCash - afternoonPaymentsTotal - afternoonExtras - afternoonTerminals;
 
                 const groupedExtras = dayExtras.reduce((acc, e) => {
                     const key = e.type === 'gasto' ? e.description : 'Garantía';
@@ -405,18 +430,17 @@
                 return { 
                     date: selectedDate, detailByBranch, paymentsBySeller, totalGross, totalPayments, totalGastos, 
                     totalGarantias, totalDeductions, totalDay, totalTerminals, totalCash, groupedExtras,
-                    morningCashTotal, afternoonCashTotal
+                    morningCashFinal, afternoonCashFinal, morningSalesTotal, afternoonSalesTotal,
+                    morningPaymentsTotal, afternoonPaymentsTotal
                 };
             }, [selectedDate, sales, branchClosures, payments, terminalEntries, extraExpenses, activeBranches, sellers]);
-
-            const formatCurrency = (val) => Math.round(val).toLocaleString();
 
             const getFormattedDateLong = (dateStr) => {
                 const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
                 const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
                 const d = new Date(dateStr + 'T12:00:00');
                 const dayName = days[d.getDay()];
-                const dayNum = String(d.getDate()).padStart(2, '0');
+                const dayNum = d.getDate();
                 const monthName = months[d.getMonth()];
                 const year = d.getFullYear();
                 return `${dayName} ${dayNum} de ${monthName} de ${year}`;
@@ -427,33 +451,62 @@
                 let text = `${getFormattedDateLong(s.date)}\n\n`;
                 
                 s.detailByBranch.forEach(b => {
-                    text += `${b.name}: $${formatCurrency(b.total)}\n`;
+                    text += `- ${b.name}: $${formatCurrency(b.total)}\n`;
                 });
                 text += `TOTAL VENTAS: $${formatCurrency(s.totalGross)}\n\n`;
                 
+                text += `GASTOS\n`;
                 s.paymentsBySeller.forEach(p => {
-                    text += `Pago ${p.name}: $${formatCurrency(p.amount)}\n`;
+                    text += `- Pago ${p.name}: $${formatCurrency(p.amount)}\n`;
                 });
                 
                 Object.entries(s.groupedExtras).forEach(([k, d]) => {
                     if (d.amount > 0) {
-                        text += `${k}: $${formatCurrency(d.amount)}\n`;
+                        text += `- ${k}: $${formatCurrency(d.amount)}\n`;
                     }
                 });
                 text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n`;
                 
-                text += `TOTAL DÍA: $${formatCurrency(s.totalDay)}\n`;
+                text += `*TOTAL DÍA: $${formatCurrency(s.totalDay)}*\n`;
                 text += `TOTAL TERMINALES: $${formatCurrency(s.totalTerminals)}\n`;
                 text += `TOTAL EFECTIVO: $${formatCurrency(s.totalCash)}`;
                 
                 navigator.clipboard.writeText(text);
-                alert('Resumen detallado copiado al portapapeles');
+                alert('Resumen detallado copiado');
+            };
+
+            const getDayOfWeek = (dateStr) => {
+                const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                const d = new Date(dateStr + 'T12:00:00');
+                return days[d.getDay()];
+            };
+
+            const openCommissionModal = (sellerId, shift) => {
+                const entry = getSaleEntry(sellerId, shift);
+                setCommissionModal({ show: true, sellerId, shift, tempType: entry?.commissionType || 'none', tempM20: entry?.mixto20 || 0, tempM25: entry?.mixto25 || 0 });
+            };
+
+            const saveCommission = () => {
+                const { sellerId, shift, tempType, tempM20, tempM25 } = commissionModal;
+                setSaveStatus('loading');
+                setSales(prev => {
+                    const existing = prev.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
+                    const filtered = prev.filter(s => !(s.date === selectedDate && s.sellerId === sellerId && s.shift === shift));
+                    let amount = existing?.amount || 0;
+                    let commission = 0;
+                    if (tempType === '10') commission = amount * 0.10;
+                    else if (tempType === '20') commission = amount * 0.20;
+                    else if (tempType === '25') commission = amount * 0.25;
+                    else if (tempType === 'mixto') { commission = (tempM20 * 0.20) + (tempM25 * 0.25); amount = tempM20 + tempM25; }
+                    return [...filtered, { date: selectedDate, sellerId, amount, shift, commissionType: tempType, commission: tempType === 'none' ? undefined : commission, mixto20: tempType === 'mixto' ? tempM20 : undefined, mixto25: tempType === 'mixto' ? tempM25 : undefined }];
+                });
+                setCommissionModal(prev => ({ ...prev, show: false }));
             };
 
             const VisualPreview = ({ source, size = "12", hasCalculated = false, onClick }) => {
                 const borderClass = hasCalculated ? 'ring-4 ring-emerald-500 ring-offset-2' : '';
                 const bg = isDarkMode ? 'bg-gray-700' : 'bg-white';
-                if (!source) return <div onClick={onClick} className={`w-${size} h-${size} rounded-xl ${bg} border border-gray-200 flex items-center justify-center text-gray-300 shadow-inner cursor-pointer transition-all ${borderClass}`}><Icon name="Camera" size={20} /></div>;
+                if (!source) return <div onClick={onClick} className={`w-${size} h-${size} rounded-xl ${bg} border border-gray-200 flex items-center justify-center text-gray-300 shadow-inner cursor-pointer transition-all ${borderClass}`}><LucideIcon name="camera" size={20} /></div>;
                 return <img src={source} onClick={onClick} className={`w-${size} h-${size} rounded-xl object-cover border-2 border-white shadow-sm cursor-pointer transition-all ${borderClass}`} alt="P" />;
             };
 
@@ -465,42 +518,50 @@
                     <header className={`${getThemeClass('bg')} ${getThemeClass('headerText')} p-4 shadow-sm sticky top-0 z-50 flex justify-between items-center transition-colors duration-300`}>
                         <div className="flex items-center gap-3">
                             <div onClick={persistData} className={`w-8 h-8 bg-white/60 rounded-lg flex items-center justify-center shadow-sm cursor-pointer transition-all active:scale-90 relative`}>
-                                <Icon name="Triangle" size={20} fill="currentColor" 
+                                <LucideIcon name="triangle" size={20} fill="currentColor" 
                                     className={
-                                        saveStatus === 'success' ? 'text-lime-400' : 
-                                        saveStatus === 'error' ? 'text-red-500' : 
-                                        saveStatus === 'loading' ? 'animate-pulse text-gray-400' : getThemeClass('text')
+                                        saveStatus === 'success' ? 'triangle-success text-lime-400' : 
+                                        saveStatus === 'error' ? 'triangle-error text-red-500' : 
+                                        saveStatus === 'loading' ? 'triangle-loading text-indigo-400' : getThemeClass('text')
                                     } 
                                 />
-                                {saveStatus === 'loading' && <div className="absolute inset-0 border-2 border-gray-300 border-t-indigo-500 rounded-lg animate-spin" />}
                             </div>
                             <h1 className="text-xl font-black tracking-tighter select-none">TRIANGULO APP</h1>
                         </div>
                         <button onClick={() => setView(view === 'settings' ? 'morning' : 'settings')} className={`p-2 rounded-full transition-all ${view === 'settings' ? 'bg-white ' + getThemeClass('text') : 'bg-white/40'}`}>
-                            {view === 'settings' ? <Icon name="X" size={22} /> : <Icon name="Settings" size={22} />}
+                            {view === 'settings' ? <LucideIcon name="x" size={22} /> : <LucideIcon name="settings" size={22} />}
                         </button>
                     </header>
 
                     <div className={`${cardBg} border-b p-2 flex items-center justify-between sticky top-[64px] z-40 transition-colors`}>
                         <button onClick={() => {
                              const current = new Date(selectedDate + 'T12:00:00'); current.setDate(current.getDate() - 1); setSelectedDate(current.toISOString().split('T')[0]);
-                        }} className={`p-2 ${getThemeClass('text')}`}><Icon name="ChevronLeft" size={24} /></button>
-                        <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} px-4 py-2 rounded-xl border flex items-center gap-2 shadow-sm`}>
-                            <Icon name="Calendar" size={18} className={getThemeClass('text')} />
-                            <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-sm font-bold focus:outline-none border-none cursor-pointer" />
+                        }} className={`p-2 ${getThemeClass('text')}`}><LucideIcon name="chevron-left" size={24} /></button>
+                        <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} px-4 py-2 rounded-xl border flex flex-col items-center gap-0 shadow-sm`}>
+                            <span className="text-[10px] font-black uppercase opacity-60">{getDayOfWeek(selectedDate)}</span>
+                            <div className="flex items-center gap-2">
+                                <LucideIcon name="calendar" size={14} className={getThemeClass('text')} />
+                                <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-sm font-black focus:outline-none border-none cursor-pointer" />
+                            </div>
                         </div>
                         <button onClick={() => {
                              const current = new Date(selectedDate + 'T12:00:00'); current.setDate(current.getDate() + 1); setSelectedDate(current.toISOString().split('T')[0]);
-                        }} className={`p-2 ${getThemeClass('text')}`}><Icon name="ChevronRight" size={24} /></button>
+                        }} className={`p-2 ${getThemeClass('text')}`}><LucideIcon name="chevron-right" size={24} /></button>
                     </div>
 
                     <main className="flex-1 p-4 max-w-lg mx-auto w-full">
                         {(view === 'morning' || view === 'afternoon') && (
                             <div className={`${cardBg} p-4 rounded-2xl shadow-sm border animate-in`}>
-                                <h2 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2">Ventas {view === 'morning' ? 'Mañana' : 'Tarde'}</h2>
+                                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                                    <h2 className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Ventas {view === 'morning' ? 'Mañana' : 'Tarde'}</h2>
+                                    <span className={`text-[11px] font-black ${getThemeClass('text')} bg-white px-2 py-0.5 rounded-full shadow-sm`}>
+                                        TOTAL: ${formatCurrency(view === 'morning' ? summaryData.morningSalesTotal : summaryData.afternoonSalesTotal)}
+                                    </span>
+                                </div>
                                 <div className="space-y-3">
                                     {sortedSellersForSales.map(seller => {
                                         const entry = getSaleEntry(seller.id, view);
+                                        const currentVal = getSaleAmount(seller.id, view);
                                         return (
                                             <div key={seller.id} className={`flex items-center justify-between gap-4 p-2 ${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-xl border ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
                                                 <div className="flex items-center gap-3">
@@ -511,7 +572,12 @@
                                                     </div>
                                                 </div>
                                                 <div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 ${getThemeClass('text')} font-bold opacity-60`}>$</span>
-                                                    <input type="number" value={getSaleAmount(seller.id, view) || ''} onChange={(e) => handleSaleChange(seller.id, view, e.target.value)} className={`w-28 pl-7 pr-3 py-2 ${inputBg} rounded-lg text-right font-black shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')}`} />
+                                                    <input 
+                                                        type="number" 
+                                                        value={currentVal === undefined ? '' : currentVal} 
+                                                        onChange={(e) => handleSaleChange(seller.id, view, e.target.value)} 
+                                                        className={`w-28 pl-7 pr-3 py-2 ${inputBg} rounded-lg text-right font-black shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')}`} 
+                                                    />
                                                 </div>
                                             </div>
                                         );
@@ -521,63 +587,85 @@
                         )}
 
                         {view === 'payments' && (
-                            <div className={`${cardBg} p-4 rounded-2xl shadow-sm border animate-in`}>
-                                <h2 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2">Pagos a Vendedores</h2>
-                                <div className="space-y-4">
-                                    {activeSellers.map(seller => (
-                                        <div key={seller.id} className={`p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-800' : 'bg-gray-50/50 border-gray-50'}`}>
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <VisualPreview source={seller.image} size="10" hasCalculated={payments.some(p => p.date === selectedDate && p.sellerId === seller.id && p.calculated)} onClick={() => setPaymentCalcModal({ ...paymentCalcModal, show: true, sellerId: seller.id })} />
-                                                <span className="font-bold">{seller.name}</span>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div className="space-y-1"><span className="text-[9px] text-gray-400 font-bold uppercase ml-1">Mañana</span>
-                                                    <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-300 font-bold text-xs">$</span><input type="number" value={getPaymentAmount(seller.id, 'morning') || ''} onChange={(e) => handlePaymentChange(seller.id, 'morning', e.target.value)} className={`w-full pl-6 pr-2 py-2 ${morningFieldBg} border border-rose-100 rounded-lg text-right font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
+                            <div className="space-y-4 animate-in">
+                                <div className={`${cardBg} p-4 rounded-2xl shadow-sm border`}>
+                                    <h2 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2">Pagos a Vendedores</h2>
+                                    <div className="space-y-4">
+                                        {activeSellers.map(seller => (
+                                            <div key={seller.id} className={`p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-800' : 'bg-gray-50/50 border-gray-50'}`}>
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <VisualPreview source={seller.image} size="10" hasCalculated={payments.some(p => p.date === selectedDate && p.sellerId === seller.id && p.calculated)} onClick={() => setPaymentCalcModal({ ...paymentCalcModal, show: true, sellerId: seller.id })} />
+                                                    <span className="font-bold">{seller.name}</span>
                                                 </div>
-                                                <div className="space-y-1"><span className="text-[9px] text-gray-400 font-bold uppercase ml-1">Tarde</span>
-                                                    <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-300 font-bold text-xs">$</span><input type="number" value={getPaymentAmount(seller.id, 'afternoon') || ''} onChange={(e) => handlePaymentChange(seller.id, 'afternoon', e.target.value)} className={`w-full pl-6 pr-2 py-2 ${afternoonFieldBg} border border-rose-100 rounded-lg text-right font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-1"><span className="text-[9px] text-gray-400 font-bold uppercase ml-1">Mañana</span>
+                                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-300 font-bold text-xs">$</span><input type="number" value={getPaymentAmount(seller.id, 'morning') || ''} onChange={(e) => handlePaymentChange(seller.id, 'morning', e.target.value)} className={`w-full pl-6 pr-2 py-2 ${morningFieldBg} border border-rose-100 rounded-lg text-right font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
+                                                    </div>
+                                                    <div className="space-y-1"><span className="text-[9px] text-gray-400 font-bold uppercase ml-1">Tarde</span>
+                                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-300 font-bold text-xs">$</span><input type="number" value={getPaymentAmount(seller.id, 'afternoon') || ''} onChange={(e) => handlePaymentChange(seller.id, 'afternoon', e.target.value)} className={`w-full pl-6 pr-2 py-2 ${afternoonFieldBg} border border-rose-100 rounded-lg text-right font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
+                                </div>
+                                {/* Totales Informativos de Pagos */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-rose-900/20 border-rose-700/30' : 'bg-rose-50 border-rose-100'} shadow-sm text-center`}>
+                                        <p className="text-[10px] font-black uppercase text-rose-500 mb-1">Total Pagos Mañana</p>
+                                        <p className="text-xl font-black text-rose-600">$ {formatCurrency(summaryData.morningPaymentsTotal)}</p>
+                                    </div>
+                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-rose-900/20 border-rose-700/30' : 'bg-rose-50 border-rose-100'} shadow-sm text-center`}>
+                                        <p className="text-[10px] font-black uppercase text-rose-500 mb-1">Total Pagos Tarde</p>
+                                        <p className="text-xl font-black text-rose-600">$ {formatCurrency(summaryData.afternoonPaymentsTotal)}</p>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
                         {view === 'closure' && (
                             <div className="space-y-4 animate-in">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/50' : 'bg-yellow-100 border-yellow-200'} shadow-sm text-center`}>
-                                        <p className="text-[10px] font-black uppercase text-yellow-600 dark:text-yellow-400 mb-1 tracking-wider">Efectivo Mañana</p>
-                                        <p className="text-2xl font-black text-yellow-700 dark:text-yellow-500 leading-none">$ {formatCurrency(summaryData.morningCashTotal)}</p>
-                                    </div>
-                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-blue-900/30 border-blue-700/50' : 'bg-blue-100 border-blue-200'} shadow-sm text-center`}>
-                                        <p className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Efectivo Tarde</p>
-                                        <p className="text-2xl font-black text-blue-700 dark:text-blue-500 leading-none">$ {formatCurrency(summaryData.afternoonCashTotal)}</p>
-                                    </div>
+                                <div className={`${cardBg} p-4 rounded-2xl shadow-sm border mb-4`}>
+                                    <h2 className={`font-black text-center ${getThemeClass('text')} text-sm`}>{getFormattedDateLong(selectedDate)}</h2>
                                 </div>
 
-                                {activeBranches.map(br => (
-                                    <div key={br.id} className={`${cardBg} p-4 rounded-2xl shadow-sm border`}>
-                                        <div className="flex items-center gap-3 mb-4"><VisualPreview source={br.image} size="10" /><h3 className={`font-black ${getThemeClass('text')} uppercase`}>{br.name}</h3></div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1"><label className="text-[10px] uppercase font-black text-gray-400">Mañana</label><div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60`}>$</span><input type="number" value={getBranchClosure(br.id).morningAmount || ''} onChange={(e) => handleBranchClosureChange(br.id, 'morningAmount', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${morningFieldBg} border rounded-xl font-black ${getThemeClass('text')} shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')}`} /></div></div>
-                                            <div className="space-y-1"><label className="text-[10px] uppercase font-black text-gray-400">Tarde</label><div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60`}>$</span><input type="number" value={getBranchClosure(br.id).afternoonAmount || ''} onChange={(e) => handleBranchClosureChange(br.id, 'afternoonAmount', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${afternoonFieldBg} border rounded-xl font-black ${getThemeClass('text')} shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')}`} /></div></div>
+                                {activeBranches.map(br => {
+                                    const closure = getBranchClosure(br.id);
+                                    return (
+                                        <div key={br.id} className={`${cardBg} p-4 rounded-2xl shadow-sm border`}>
+                                            <div className="flex justify-between items-center mb-4">
+                                                <div className="flex items-center gap-3"><VisualPreview source={br.image} size="10" /><h3 className={`font-black ${getThemeClass('text')} uppercase`}>{br.name}</h3></div>
+                                                <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded">TOT: ${formatCurrency(closure.morningAmount + closure.afternoonAmount)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-1"><label className="text-[10px] uppercase font-black text-gray-400">Mañana</label><div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60`}>$</span><input type="number" value={closure.morningAmount || ''} onChange={(e) => handleBranchClosureChange(br.id, 'morningAmount', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${morningFieldBg} border rounded-xl font-black ${getThemeClass('text')} shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')}`} /></div></div>
+                                                <div className="space-y-1"><label className="text-[10px] uppercase font-black text-gray-400">Tarde</label><div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60`}>$</span><input type="number" value={closure.afternoonAmount || ''} onChange={(e) => handleBranchClosureChange(br.id, 'afternoonAmount', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${afternoonFieldBg} border rounded-xl font-black ${getThemeClass('text')} shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')}`} /></div></div>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
+
                                 <div className={`${cardBg} p-4 rounded-2xl shadow-sm border`}>
-                                    <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2">Gastos y Garantías</h3>
+                                    <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2 flex justify-between">
+                                        Gastos y Garantías 
+                                        <span>Total: ${formatCurrency(summaryData.totalGastos + summaryData.totalGarantias)}</span>
+                                    </h3>
                                     <div className="space-y-6">
                                         <div>
-                                            <div onClick={() => openConceptModal('gasto')} className="text-[10px] uppercase text-rose-400 font-black flex items-center gap-1 mb-2 cursor-pointer hover:underline p-1 rounded hover:bg-rose-50 w-fit"><Icon name="Receipt" size={12} /> <span>Gastos</span></div>
+                                            <div onClick={() => openConceptModal('gasto')} className="text-[10px] uppercase text-rose-400 font-black flex items-center justify-between gap-1 mb-2 cursor-pointer hover:underline p-1 rounded hover:bg-rose-50 w-full">
+                                                <span className="flex items-center gap-1"><LucideIcon name="receipt" size={12} /> Gastos</span>
+                                                <span>Subtotal: ${formatCurrency(getExtraExpenseAmount('gasto', 'morning') + getExtraExpenseAmount('gasto', 'afternoon'))}</span>
+                                            </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 text-xs font-bold opacity-60">$</span><input type="number" value={getExtraExpenseAmount('gasto', 'morning') || ''} onChange={(e) => handleExtraExpenseChange('gasto', 'morning', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${morningFieldBg} border-rose-200 border rounded-xl font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
                                                 <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 text-xs font-bold opacity-60">$</span><input type="number" value={getExtraExpenseAmount('gasto', 'afternoon') || ''} onChange={(e) => handleExtraExpenseChange('gasto', 'afternoon', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${afternoonFieldBg} border-rose-200 border rounded-xl font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
                                             </div>
                                         </div>
                                         <div>
-                                            <div onClick={() => openConceptModal('garantia')} className="text-[10px] uppercase text-rose-400 font-black flex items-center gap-1 mb-2 cursor-pointer hover:underline p-1 rounded hover:bg-rose-50 w-fit"><Icon name="ShieldCheck" size={12} /> <span>Garantías</span></div>
+                                            <div onClick={() => openConceptModal('garantia')} className="text-[10px] uppercase text-rose-400 font-black flex items-center justify-between gap-1 mb-2 cursor-pointer hover:underline p-1 rounded hover:bg-rose-50 w-full">
+                                                <span className="flex items-center gap-1"><LucideIcon name="shield-check" size={12} /> Garantías</span>
+                                                <span>Subtotal: ${formatCurrency(getExtraExpenseAmount('garantia', 'morning') + getExtraExpenseAmount('garantia', 'afternoon'))}</span>
+                                            </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 text-xs font-bold opacity-60">$</span><input type="number" value={getExtraExpenseAmount('garantia', 'morning') || ''} onChange={(e) => handleExtraExpenseChange('garantia', 'morning', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${morningFieldBg} border-rose-200 border rounded-xl font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
                                                 <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 text-xs font-bold opacity-60">$</span><input type="number" value={getExtraExpenseAmount('garantia', 'afternoon') || ''} onChange={(e) => handleExtraExpenseChange('garantia', 'afternoon', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${afternoonFieldBg} border-rose-200 border rounded-xl font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
@@ -585,12 +673,19 @@
                                         </div>
                                     </div>
                                 </div>
+
                                 <div className={`${cardBg} p-4 rounded-2xl shadow-sm border`}>
-                                    <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest">Terminales</h3>
+                                    <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2 flex justify-between">
+                                        Terminales
+                                        <span>Total: ${formatCurrency(summaryData.totalTerminals)}</span>
+                                    </h3>
                                     <div className="space-y-4">
                                         {activeTerminals.map(t => (
                                             <div key={t.id} className={`p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-800' : 'bg-gray-50/50 border-gray-50'}`}>
-                                                <div className="flex items-center gap-3 mb-2"><VisualPreview source={t.image} size="8" /><span className="font-bold">{t.name}</span></div>
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <div className="flex items-center gap-3"><VisualPreview source={t.image} size="8" /><span className="font-bold">{t.name}</span></div>
+                                                    <span className="text-[10px] font-bold">Total: ${formatCurrency(getTerminalAmount(t.id, 'morning') + getTerminalAmount(t.id, 'afternoon'))}</span>
+                                                </div>
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60`}>$</span><input type="number" value={getTerminalAmount(t.id, 'morning') || ''} onChange={(e) => handleTerminalChange(t.id, 'morning', e.target.value)} className={`w-full pl-7 pr-3 p-2 ${morningFieldBg} border rounded-lg text-right font-black ${getThemeClass('text')} outline-none`} /></div>
                                                     <div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60`}>$</span><input type="number" value={getTerminalAmount(t.id, 'afternoon') || ''} onChange={(e) => handleTerminalChange(t.id, 'afternoon', e.target.value)} className={`w-full pl-7 pr-3 p-2 ${afternoonFieldBg} border rounded-lg text-right font-black ${getThemeClass('text')} outline-none`} /></div>
@@ -599,13 +694,25 @@
                                         ))}
                                     </div>
                                 </div>
+
+                                {/* Cuadros Informativos de Efectivo al Final en Cierre */}
+                                <div className="grid grid-cols-2 gap-4 mt-6">
+                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/50' : 'bg-yellow-100 border-yellow-200'} shadow-sm text-center`}>
+                                        <p className="text-[10px] font-black uppercase text-yellow-600 dark:text-yellow-400 mb-1 tracking-wider">Efectivo Mañana</p>
+                                        <p className="text-2xl font-black text-yellow-700 dark:text-yellow-500 leading-none">$ {formatCurrency(summaryData.morningCashFinal)}</p>
+                                    </div>
+                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-blue-900/30 border-blue-700/50' : 'bg-blue-100 border-blue-200'} shadow-sm text-center`}>
+                                        <p className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Efectivo Tarde</p>
+                                        <p className="text-2xl font-black text-blue-700 dark:text-blue-500 leading-none">$ {formatCurrency(summaryData.afternoonCashFinal)}</p>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
                         {view === 'summary' && (
                             <div className="space-y-4 animate-in">
                                 <div onClick={copySummaryText} className={`${cardBg} p-6 rounded-3xl shadow-xl border cursor-pointer active:scale-[0.98] transition-all`}>
-                                    <div className="flex justify-between items-center mb-6"><h2 className={`font-black text-2xl ${getThemeClass('text')}`}>{summaryData.date}</h2><Icon name="Copy" size={20} className={getThemeClass('text')} /></div>
+                                    <div className="flex justify-between items-center mb-6"><h2 className={`font-black text-lg ${getThemeClass('text')}`}>{summaryData.date}</h2><LucideIcon name="copy" size={20} className={getThemeClass('text')} /></div>
                                     <div className="space-y-4">
                                         <div><h3 className="text-[10px] font-black uppercase text-gray-400 mb-2 border-b">Sucursales</h3>
                                             {summaryData.detailByBranch.map((b, i) => (<div key={i} className="flex justify-between text-sm py-1 border-b border-gray-50"><span className="text-gray-500">{b.name}</span><span className="font-black">$ {formatCurrency(b.total)}</span></div>))}
@@ -620,7 +727,7 @@
                                         <div className={`${getThemeClass('bg')} ${getThemeClass('headerText')} p-6 rounded-2xl shadow-lg border-2 ${getThemeClass('border')} text-center relative overflow-hidden`}>
                                             <p className="text-xs uppercase font-black opacity-60 mb-1">Efectivo Total</p>
                                             <p className="text-5xl font-black">$ {formatCurrency(summaryData.totalCash)}</p>
-                                            <Icon name="Banknote" size={100} className="absolute -right-4 -bottom-4 opacity-10 rotate-12" />
+                                            <LucideIcon name="banknote" size={100} className="absolute -right-4 -bottom-4 opacity-10 rotate-12" />
                                         </div>
                                     </div>
                                 </div>
@@ -632,14 +739,14 @@
                                 <div className={`${getThemeClass('bg')} ${getThemeClass('headerText')} p-5 rounded-2xl flex justify-between items-center shadow-sm border ${getThemeClass('border')}`}>
                                     <div><h2 className="font-black text-lg">Copia de Seguridad</h2><p className="text-[10px] font-bold opacity-70">Respalda tus registros localmente</p></div>
                                     <div className="flex gap-2">
-                                        <button onClick={exportBackup} className="p-3 bg-white/30 rounded-xl hover:bg-white/50 transition-all active:scale-95"><Icon name="Download" size={24} /></button>
-                                        <button onClick={() => fileInputRef.current.click()} className="p-3 bg-white/30 rounded-xl hover:bg-white/50 transition-all active:scale-95"><Icon name="Upload" size={24} /></button>
+                                        <button onClick={exportBackup} className="p-3 bg-white/30 rounded-xl hover:bg-white/50 transition-all active:scale-95"><LucideIcon name="download" size={24} /></button>
+                                        <button onClick={() => fileInputRef.current.click()} className="p-3 bg-white/30 rounded-xl hover:bg-white/50 transition-all active:scale-95"><LucideIcon name="upload" size={24} /></button>
                                         <input type="file" ref={fileInputRef} onChange={importBackup} accept=".json" className="hidden" />
                                     </div>
                                 </div>
                                 <div className={`${cardBg} p-5 rounded-2xl border shadow-sm`}>
                                     <div className="flex items-center justify-between mb-4"><h2 className="font-black text-lg">Personalización</h2>
-                                        <button onClick={() => { setIsDarkMode(!isDarkMode); setSaveStatus('loading'); }} className={`flex items-center gap-2 p-2 px-3 rounded-xl border transition-all ${isDarkMode ? 'bg-gray-800 text-amber-300' : 'bg-gray-50 text-indigo-500'}`}>{isDarkMode ? <Icon name="Sun" size={20} /> : <Icon name="Moon" size={20} />}</button>
+                                        <button onClick={() => { setIsDarkMode(!isDarkMode); setSaveStatus('loading'); }} className={`flex items-center gap-2 p-2 px-3 rounded-xl border transition-all ${isDarkMode ? 'bg-gray-800 text-amber-300' : 'bg-gray-50 text-indigo-500'}`}>{isDarkMode ? <LucideIcon name="sun" size={20} /> : <LucideIcon name="moon" size={20} />}</button>
                                     </div>
                                     <div className="flex justify-between gap-2">{(['indigo', 'emerald', 'rose', 'amber', 'slate']).map(t => (<button key={t} onClick={() => { setTheme(t); setSaveStatus('loading'); }} className={`w-10 h-10 rounded-full border-2 transition-all ${theme === t ? 'ring-2 ring-offset-2 ring-gray-400 scale-110 shadow-md' : 'border-transparent'} ${themeColors[t].dot}`} />))}</div>
                                 </div>
@@ -655,7 +762,7 @@
                                             {section.items.map((item) => (
                                                 <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border shadow-sm ${item.active ? (isDarkMode ? 'bg-gray-800' : 'bg-gray-50') : 'bg-gray-200 opacity-60'}`}>
                                                     <div className="flex items-center gap-3 flex-1">
-                                                        <div className="relative" onClick={() => { setTargetIdForPhoto({ id: item.id, type: section.type }); photoInputRef.current.click(); }}><VisualPreview source={item.image} /><div className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow-sm border"><Icon name="Camera" size={10} /></div></div>
+                                                        <div className="relative" onClick={() => { setTargetIdForPhoto({ id: item.id, type: section.type }); photoInputRef.current.click(); }}><VisualPreview source={item.image} /><div className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow-sm border"><LucideIcon name="camera" size={10} /></div></div>
                                                         <input type="text" value={item.name} onChange={(e) => {
                                                             const n = e.target.value; 
                                                             setSaveStatus('loading');
@@ -669,7 +776,7 @@
                                                         if (section.type === 'seller') setSellers(prev => prev.map(s => s.id === item.id ? {...s, active: !s.active} : s));
                                                         else if (section.type === 'branch') setBranches(prev => prev.map(b => b.id === item.id ? {...b, active: !b.active} : b));
                                                         else if (section.type === 'terminal') setTerminals(prev => prev.map(t => t.id === item.id ? {...t, active: !t.active} : t));
-                                                    }} className="p-3 rounded-xl">{item.active ? <Icon name="Eye" size={20} className="text-emerald-500" /> : <Icon name="EyeOff" size={20} />}</button>
+                                                    }} className="p-3 rounded-xl">{item.active ? <LucideIcon name="eye" size={20} className="text-emerald-500" /> : <LucideIcon name="eye-off" size={20} />}</button>
                                                 </div>
                                             ))}
                                         </div>
@@ -704,8 +811,8 @@
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                             <div className={`${cardBg} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in`}>
                                 <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}>
-                                    <div className="flex items-center gap-2"><Icon name="MessageSquareText" size={20} className={getThemeClass('text')} /><h3 className={`font-black uppercase text-sm ${getThemeClass('text')}`}>Capturar Concepto</h3></div>
-                                    <button onClick={() => setConceptModal(pv => ({ ...pv, show: false }))}><Icon name="X" size={24} className={getThemeClass('text')} /></button>
+                                    <div className="flex items-center gap-2"><LucideIcon name="message-square-text" size={20} className={getThemeClass('text')} /><h3 className={`font-black uppercase text-sm ${getThemeClass('text')}`}>Capturar Concepto</h3></div>
+                                    <button onClick={() => setConceptModal(pv => ({ ...pv, show: false }))}><LucideIcon name="x" size={24} className={getThemeClass('text')} /></button>
                                 </div>
                                 <div className="p-6 space-y-4">
                                     <label className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Descripción del {conceptModal.type === 'gasto' ? 'Gasto' : 'Garantía'}</label>
@@ -720,8 +827,8 @@
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                             <div className={`${cardBg} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in`}>
                                 <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}>
-                                    <div className="flex items-center gap-2"><Icon name="Percent" size={20} className={getThemeClass('text')} /><h3 className={`font-black uppercase text-sm ${getThemeClass('text')}`}>Comisión</h3></div>
-                                    <button onClick={() => setCommissionModal(pv => ({ ...pv, show: false }))}><Icon name="X" size={24} className={getThemeClass('text')} /></button>
+                                    <div className="flex items-center gap-2"><LucideIcon name="percent" size={20} className={getThemeClass('text')} /><h3 className={`font-black uppercase text-sm ${getThemeClass('text')}`}>Comisión</h3></div>
+                                    <button onClick={() => setCommissionModal(pv => ({ ...pv, show: false }))}><LucideIcon name="x" size={24} className={getThemeClass('text')} /></button>
                                 </div>
                                 <div className="p-6 space-y-6">
                                     <div className="flex flex-wrap gap-2">{(['10', '20', '25', 'mixto']).map(t => (<button key={t} onClick={() => setCommissionModal(pv => ({ ...pv, tempType: t }))} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${commissionModal.tempType === t ? getThemeClass('btn') + ' text-white scale-105 shadow-md' : 'bg-gray-100 text-gray-400'}`}>{t === 'mixto' ? 'Mixto' : `${t}%`}</button>))}</div>
@@ -742,8 +849,8 @@
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                             <div className={`${cardBg} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in flex flex-col max-h-[90vh]`}>
                                 <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}>
-                                    <div className="flex items-center gap-2"><Icon name="Calculator" size={20} className={getThemeClass('text')} /><h3 className={`font-black uppercase text-sm ${getThemeClass('text')}`}>Calculadora de Pago</h3></div>
-                                    <button onClick={() => setPaymentCalcModal(pv => ({ ...pv, show: false }))}><Icon name="X" size={24} className={getThemeClass('text')} /></button>
+                                    <div className="flex items-center gap-2"><LucideIcon name="calculator" size={20} className={getThemeClass('text')} /><h3 className={`font-black uppercase text-sm ${getThemeClass('text')}`}>Calculadora de Pago</h3></div>
+                                    <button onClick={() => setPaymentCalcModal(pv => ({ ...pv, show: false }))}><LucideIcon name="x" size={24} className={getThemeClass('text')} /></button>
                                 </div>
                                 <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
                                     <div className="grid grid-cols-2 gap-2">
