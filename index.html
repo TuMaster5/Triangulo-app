@@ -2,8 +2,22 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TRIANGULO APP 5.0 - Cloud Sync</title>
+    
+    <!-- Meta etiquetas para comportamiento de App Nativa -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Triangulo">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#6366f1">
+    
+    <!-- Web App Manifest integrado -->
+    <link rel="manifest" href="data:application/manifest+json,{'name':'TRIANGULO APP','short_name':'Triangulo','start_url':'.','display':'standalone','background_color':'#ffffff','theme_color':'#6366f1','icons':[{'src':'https://cdn-icons-png.flaticon.com/512/5968/5968322.png','sizes':'512x512','type':'image/png'}]}">
+    
+    <!-- Icono para iOS -->
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5968/5968322.png">
+
     <!-- Librerías Externas via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,13 +32,17 @@
             font-family: 'Inter', sans-serif; 
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: contain;
+            /* Soporte para notch y barras de sistema */
+            padding-top: env(safe-area-inset-top);
         }
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 1rem); }
+        .pt-safe { padding-top: env(safe-area-inset-top); }
+        
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
@@ -126,7 +144,7 @@
             ];
 
             return (
-                <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 px-2 py-1 z-50 transition-colors shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 px-2 py-1 pb-[env(safe-area-inset-bottom)] z-50 transition-colors shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <div className="max-w-lg mx-auto flex justify-between items-center">
                         {items.map((item) => {
                             const isActive = currentView === item.view;
@@ -164,7 +182,7 @@
             const [branchClosures, setBranchClosures] = useState([]);
             const [terminalEntries, setTerminalEntries] = useState([]);
             const [extraExpenses, setExtraExpenses] = useState([]);
-            const [investments, setInvestments] = useState([]); // Nueva persistencia de inversiones
+            const [investments, setInvestments] = useState([]);
 
             const [commissionModal, setCommissionModal] = useState({ show: false, sellerId: '', shift: 'morning', tempType: 'none', tempM20: 0, tempM25: 0 });
             const [conceptModal, setConceptModal] = useState({ show: false, type: 'gasto', tempDescription: '' });
@@ -174,18 +192,15 @@
                 endDate: ''
             });
 
-            // Estado para el menú secreto
             const [headerClicks, setHeaderClicks] = useState(0);
             const [lastHeaderClick, setLastHeaderClick] = useState(0);
             const [showSecretModal, setShowSecretModal] = useState(false);
             const [newInvestment, setNewInvestment] = useState({ concept: '', amount: '' });
 
-            // --- REFS ---
             const fileInputRef = useRef(null);
             const photoInputRef = useRef(null);
             const [targetIdForPhoto, setTargetIdForPhoto] = useState(null);
 
-            // --- CONFIGURACIÓN DE TEMA ---
             const themeColors = useMemo(() => ({
                 indigo: { bg: 'bg-indigo-50', text: 'text-indigo-500', border: 'border-indigo-100', btn: 'bg-indigo-500 hover:bg-indigo-600', ring: 'ring-indigo-200', headerText: 'text-indigo-700', dot: 'bg-indigo-500' },
                 emerald: { bg: 'bg-emerald-50', text: 'text-emerald-500', border: 'border-emerald-100', btn: 'bg-emerald-500 hover:bg-emerald-600', ring: 'ring-emerald-200', headerText: 'text-emerald-700', dot: 'bg-emerald-500' },
@@ -199,7 +214,6 @@
             const morningFieldBg = isDarkMode ? 'bg-yellow-400/20 border-yellow-500/30' : 'bg-yellow-50 border-yellow-100';
             const afternoonFieldBg = isDarkMode ? 'bg-blue-400/20 border-blue-500/30' : 'bg-blue-50 border-blue-100';
 
-            // --- UTILITIES DE ESTADO ---
             const applyData = (p) => {
                 if (p.sellers) setSellers(p.sellers); 
                 if (p.branches) setBranches(p.branches); 
@@ -278,7 +292,6 @@
                 };
             }, [selectedDate, sales, branchClosures, payments, terminalEntries, extraExpenses, activeBranches, sellers]);
 
-            // --- CALCULOS ---
             const calculateComs = (id, s, e) => sales.filter(sa => sa.sellerId === id && sa.date >= s && sa.date <= e).reduce((acc, curr) => acc + (curr.commission || 0), 0);
             const calculatePrevPmts = (id, s, e) => payments.filter(p => p.sellerId === id && p.date >= s && p.date <= e && p.amount > 0).reduce((acc, curr) => acc + curr.amount, 0);
 
@@ -321,7 +334,6 @@
                 });
             }, [activeSellers, sales, selectedDate, view]);
 
-            // --- SUPABASE & DATA SYNC ---
             const SUPABASE_URL = 'https://gpkiboiatmshvwmwdnqx.supabase.co'; 
             const SUPABASE_KEY = 'sb_publishable_hyl_Srp08L9DdwCBG7Fd-g_QX9qRUfU';
             const supabaseClient = (typeof window.supabase !== 'undefined') ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
@@ -367,7 +379,6 @@
                 return () => clearTimeout(timer);
             }, [sales, payments, branchClosures, terminalEntries, extraExpenses, investments, sellers, branches, terminals, theme, isDarkMode]);
 
-            // --- HANDLERS ---
             const handleHeaderClick = () => {
                 const now = Date.now();
                 if (now - lastHeaderClick < 500) {
@@ -481,7 +492,6 @@
                 Object.entries(s.groupedExtras).forEach(([k, d]) => { if (d.amount > 0) text += `- ${k}: $${formatCurrency(d.amount)}\n`; });
                 text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n*TOTAL DÍA: $${formatCurrency(s.totalDay)}*\n`;
                 
-                // Desglose de Terminales - Subido justo debajo de TOTAL DÍA y sin encabezado
                 activeTerminals.forEach(t => {
                     const amt = getTerminalAmountLocal(t.id, 'morning') + getTerminalAmountLocal(t.id, 'afternoon');
                     if (amt > 0) {
@@ -507,12 +517,11 @@
                 }; reader.readAsText(file);
             };
 
-            // --- RENDER HELPERS ---
             const cardBgClass = isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100';
             const inputBgClass = isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-700';
 
             return (
-                <div className={`min-h-screen pb-24 ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} flex flex-col transition-colors duration-500`}>
+                <div className={`min-h-screen pb-24 ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} flex flex-col transition-colors duration-500 pt-safe`}>
                     <header className={`${getThemeClass('bg')} ${getThemeClass('headerText')} p-4 shadow-sm sticky top-0 z-50 flex justify-between items-center transition-colors duration-300`}>
                         <div className="flex items-center gap-3">
                             <div onClick={persistData} className="flex items-center justify-center cursor-pointer active:scale-90 relative transition-all duration-300">
@@ -649,7 +658,6 @@
                                     </div>
                                 </div>
 
-                                {/* Sección de Terminales - Movida abajo de Deducciones */}
                                 <div className={`${cardBgClass} p-4 rounded-2xl shadow-sm border`}>
                                     <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2 flex justify-between">Terminales Bancarias <span>Total: ${formatCurrency(summaryData.totalTerminals)}</span></h3>
                                     <div className="space-y-6">
@@ -695,7 +703,7 @@
                         )}
 
                         {view === 'settings' && (
-                            <div className="space-y-6 animate-in">
+                            <div className="space-y-6 animate-in pb-safe">
                                 <div className={`${getThemeClass('bg')} ${getThemeClass('headerText')} p-5 rounded-2xl flex justify-between items-center shadow-sm border ${getThemeClass('border')}`}>
                                     <div><h2 className="font-black text-lg">Copia de Seguridad</h2><p className="text-[10px] font-bold opacity-70">Respalda registros localmente</p></div>
                                     <div className="flex gap-2">
@@ -755,7 +763,6 @@
 
                     <Navigation currentView={view} setView={setView} theme={theme} />
 
-                    {/* Modales */}
                     {conceptModal.show && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if(e.target === e.currentTarget) setConceptModal(pv => ({ ...pv, show: false })); }}>
                             <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in`}>
@@ -840,7 +847,6 @@
                         </div>
                     )}
 
-                    {/* Modal Menú Secreto - Inversiones */}
                     {showSecretModal && (
                         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in" onClick={(e) => { if(e.target === e.currentTarget) setShowSecretModal(false); }}>
                             <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border flex flex-col max-h-[80vh]`}>
