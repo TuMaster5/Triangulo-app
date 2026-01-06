@@ -2,24 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TRIANGULO APP</title>
-    
-    <!-- Configuración para App Nativa / PWA -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Triangulo">
-    <meta name="application-name" content="Triangulo">
-    <meta name="theme-color" content="#000000">
-
-    <!-- Icono SVG Profesional (Fondo Negro, 6 Triángulos Rojo/Negro) -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%23000000'/%3E%3Cg transform='translate(0, -20)'%3E%3Cpath d='M256 60 L460 400 L52 400 Z' fill='%23FF0000'/%3E%3Cpath d='M256 110 L410 375 L102 375 Z' fill='%23000000'/%3E%3Cpath d='M256 160 L360 350 L152 350 Z' fill='%23FF0000'/%3E%3Cpath d='M256 210 L310 325 L202 325 Z' fill='%23000000'/%3E%3Cpath d='M256 260 L285 305 L227 305 Z' fill='%23FF0000'/%3E%3Cpath d='M256 280 L270 300 L242 300 Z' fill='%23000000'/%3E%3C/g%3E%3Ctext x='256' y='465' font-family='Arial, sans-serif' font-weight='900' font-size='48' fill='%23FFFFFF' text-anchor='middle'%3ETRIANGULO APP%3C/text%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%23000000'/%3E%3Cg transform='translate(0, -20)'%3E%3Cpath d='M256 60 L460 400 L52 400 Z' fill='%23FF0000'/%3E%3Cpath d='M256 110 L410 375 L102 375 Z' fill='%23000000'/%3E%3Cpath d='M256 160 L360 350 L152 350 Z' fill='%23FF0000'/%3E%3Cpath d='M256 210 L310 325 L202 325 Z' fill='%23000000'/%3E%3Cpath d='M256 260 L285 305 L227 305 Z' fill='%23FF0000'/%3E%3Cpath d='M256 280 L270 300 L242 300 Z' fill='%23000000'/%3E%3C/g%3E%3Ctext x='256' y='465' font-family='Arial, sans-serif' font-weight='900' font-size='48' fill='%23FFFFFF' text-anchor='middle'%3ETRIANGULO APP%3C/text%3E%3C/svg%3E">
-
-    <!-- Web App Manifest codificado para compatibilidad máxima -->
-    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22TRIANGULO%20APP%22%2C%22short_name%22%3A%22Triangulo%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23000000%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520viewBox%253D%25220%25200%2520512%2520512%2522%253E%253Crect%2520width%253D%2522512%2522%2520height%253D%2522512%2522%2520fill%253D%2522%2523000000%2522%252F%253E%253Cg%2520transform%253D%2522translate(0%252C%2520-20)%2522%253E%253Cpath%2520d%253D%2522M256%252060%2520L460%2520400%2520L52%2520400%2520Z%2522%2520fill%253D%2522%2523FF0000%2522%252F%253E%253Cpath%2520d%253D%2522M256%2520110%2520L410%2520375%2520L102%2520375%2520Z%2522%2520fill%253D%2522%2523000000%2522%252F%253E%253Cpath%2520d%253D%2522M256%2520160%2520L360%2520350%2520L152%2520350%2520Z%2522%2520fill%253D%2522%2523FF0000%2522%252F%253E%253Cpath%2520d%253D%2522M256%2520210%2520L310%2520325%2520L202%2520325%2520Z%2522%2520fill%253D%2522%2523000000%2522%252F%253E%253Cpath%2520d%253D%2522M256%2520260%2520L285%2520305%2520L227%2520305%2520Z%2522%2520fill%253D%2522%2523FF0000%2522%252F%253E%253Cpath%2520d%253D%2522M256%2520280%2520L270%2520300%2520L242%2520300%2520Z%2522%2520fill%253D%2522%2523000000%2522%252F%253E%253C%252Fg%253E%253Ctext%2520x%253D%2522256%2522%2520y%253D%2522465%2522%2520font-family%253D%2522Arial%2522%2520font-weight%253D%2522900%2522%2520font-size%253D%252248%2522%2520fill%253D%2522%2523FFFFFF%2522%2520text-anchor%253D%2522middle%2522%253ETRIANGULO%2520APP%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D'>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TRIANGULO APP 5.0 - Cloud Sync</title>
     <!-- Librerías Externas via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -34,16 +18,13 @@
             font-family: 'Inter', sans-serif; 
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: contain;
-            padding-top: env(safe-area-inset-top);
         }
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
-        .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 1rem); }
-        .pt-safe { padding-top: env(safe-area-inset-top); }
-        
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
@@ -71,7 +52,7 @@
         .triangle-base { transition: all 0.3s ease; }
         .triangle-flash-success { animation: flash-success 1s ease-out forwards; color: #bef264 !important; }
         .triangle-flash-error { animation: flash-error 1s ease-out forwards; color: #fca5a5 !important; }
-        .triangle-growing { animation: grow-save 1s ease-in-out infinite; color: #FF0000 !important; }
+        .triangle-growing { animation: grow-save 1s ease-in-out infinite; color: #6366f1 !important; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-500">
@@ -80,6 +61,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
+        // --- FUNCIONES DE UTILIDAD GLOBALES ---
         const getDayOfWeek = (dateStr) => {
             if (!dateStr) return '';
             const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -144,7 +126,7 @@
             ];
 
             return (
-                <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 px-2 py-1 pb-[env(safe-area-inset-bottom)] z-50 transition-colors shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 px-2 py-1 z-50 transition-colors shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <div className="max-w-lg mx-auto flex justify-between items-center">
                         {items.map((item) => {
                             const isActive = currentView === item.view;
@@ -167,6 +149,7 @@
         };
 
         const App = () => {
+            // --- ESTADO ---
             const [view, setView] = useState('morning');
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
             const [theme, setTheme] = useState('indigo');
@@ -181,7 +164,7 @@
             const [branchClosures, setBranchClosures] = useState([]);
             const [terminalEntries, setTerminalEntries] = useState([]);
             const [extraExpenses, setExtraExpenses] = useState([]);
-            const [investments, setInvestments] = useState([]);
+            const [investments, setInvestments] = useState([]); // Nueva persistencia de inversiones
 
             const [commissionModal, setCommissionModal] = useState({ show: false, sellerId: '', shift: 'morning', tempType: 'none', tempM20: 0, tempM25: 0 });
             const [conceptModal, setConceptModal] = useState({ show: false, type: 'gasto', tempDescription: '' });
@@ -191,15 +174,18 @@
                 endDate: ''
             });
 
+            // Estado para el menú secreto
             const [headerClicks, setHeaderClicks] = useState(0);
             const [lastHeaderClick, setLastHeaderClick] = useState(0);
             const [showSecretModal, setShowSecretModal] = useState(false);
             const [newInvestment, setNewInvestment] = useState({ concept: '', amount: '' });
 
+            // --- REFS ---
             const fileInputRef = useRef(null);
             const photoInputRef = useRef(null);
             const [targetIdForPhoto, setTargetIdForPhoto] = useState(null);
 
+            // --- CONFIGURACIÓN DE TEMA ---
             const themeColors = useMemo(() => ({
                 indigo: { bg: 'bg-indigo-50', text: 'text-indigo-500', border: 'border-indigo-100', btn: 'bg-indigo-500 hover:bg-indigo-600', ring: 'ring-indigo-200', headerText: 'text-indigo-700', dot: 'bg-indigo-500' },
                 emerald: { bg: 'bg-emerald-50', text: 'text-emerald-500', border: 'border-emerald-100', btn: 'bg-emerald-500 hover:bg-emerald-600', ring: 'ring-emerald-200', headerText: 'text-emerald-700', dot: 'bg-emerald-500' },
@@ -213,6 +199,7 @@
             const morningFieldBg = isDarkMode ? 'bg-yellow-400/20 border-yellow-500/30' : 'bg-yellow-50 border-yellow-100';
             const afternoonFieldBg = isDarkMode ? 'bg-blue-400/20 border-blue-500/30' : 'bg-blue-50 border-blue-100';
 
+            // --- UTILITIES DE ESTADO ---
             const applyData = (p) => {
                 if (p.sellers) setSellers(p.sellers); 
                 if (p.branches) setBranches(p.branches); 
@@ -291,6 +278,7 @@
                 };
             }, [selectedDate, sales, branchClosures, payments, terminalEntries, extraExpenses, activeBranches, sellers]);
 
+            // --- CALCULOS ---
             const calculateComs = (id, s, e) => sales.filter(sa => sa.sellerId === id && sa.date >= s && sa.date <= e).reduce((acc, curr) => acc + (curr.commission || 0), 0);
             const calculatePrevPmts = (id, s, e) => payments.filter(p => p.sellerId === id && p.date >= s && p.date <= e && p.amount > 0).reduce((acc, curr) => acc + curr.amount, 0);
 
@@ -333,6 +321,7 @@
                 });
             }, [activeSellers, sales, selectedDate, view]);
 
+            // --- SUPABASE & DATA SYNC ---
             const SUPABASE_URL = 'https://gpkiboiatmshvwmwdnqx.supabase.co'; 
             const SUPABASE_KEY = 'sb_publishable_hyl_Srp08L9DdwCBG7Fd-g_QX9qRUfU';
             const supabaseClient = (typeof window.supabase !== 'undefined') ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
@@ -378,6 +367,7 @@
                 return () => clearTimeout(timer);
             }, [sales, payments, branchClosures, terminalEntries, extraExpenses, investments, sellers, branches, terminals, theme, isDarkMode]);
 
+            // --- HANDLERS ---
             const handleHeaderClick = () => {
                 const now = Date.now();
                 if (now - lastHeaderClick < 500) {
@@ -485,23 +475,13 @@
             const copySummaryText = () => {
                 const s = summaryData; 
                 let text = `${getFormattedDateLong(s.date)}\n\n`;
+                s.detailByBranch.forEach(b => { text += `- ${b.name}: $${formatCurrency(b.total)}\n`; });
+                text += `TOTAL VENTAS: $${formatCurrency(s.totalGross)}\n\nDEDUCCIONES\n`;
+                s.paymentsBySeller.forEach(p => { text += `- Pago ${p.name}: $${formatCurrency(p.amount)}\n`; });
+                Object.entries(s.groupedExtras).forEach(([k, d]) => { if (d.amount > 0) text += `- ${k}: $${formatCurrency(d.amount)}\n`; });
+                text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n*TOTAL DÍA: $${formatCurrency(s.totalDay)}*\n`;
                 
-                s.detailByBranch.forEach(b => { 
-                    text += `- ${b.name}: $${formatCurrency(b.total)}\n`; 
-                });
-                text += `TOTAL VENTAS: $${formatCurrency(s.totalGross)}\n\n`;
-                
-                text += `DEDUCCIONES\n`;
-                s.paymentsBySeller.forEach(p => { 
-                    text += `- Pago ${p.name}: $${formatCurrency(p.amount)}\n`; 
-                });
-                Object.entries(s.groupedExtras).forEach(([k, d]) => { 
-                    if (d.amount > 0) text += `- ${k}: $${formatCurrency(d.amount)}\n`; 
-                });
-                text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n`;
-                
-                text += `*TOTAL DÍA: $${formatCurrency(s.totalDay)}*\n`;
-                
+                // Desglose de Terminales - Subido justo debajo de TOTAL DÍA y sin encabezado
                 activeTerminals.forEach(t => {
                     const amt = getTerminalAmountLocal(t.id, 'morning') + getTerminalAmountLocal(t.id, 'afternoon');
                     if (amt > 0) {
@@ -510,9 +490,7 @@
                 });
                 
                 text += `TOTAL EFECTIVO: $${formatCurrency(s.totalCash)}`;
-                
-                navigator.clipboard.writeText(text); 
-                alert('Resumen copiado');
+                navigator.clipboard.writeText(text); alert('Resumen copiado');
             };
 
             const exportBackup = () => {
@@ -529,11 +507,12 @@
                 }; reader.readAsText(file);
             };
 
+            // --- RENDER HELPERS ---
             const cardBgClass = isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100';
             const inputBgClass = isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-700';
 
             return (
-                <div className={`min-h-screen pb-24 ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} flex flex-col transition-colors duration-500 pt-safe`}>
+                <div className={`min-h-screen pb-24 ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} flex flex-col transition-colors duration-500`}>
                     <header className={`${getThemeClass('bg')} ${getThemeClass('headerText')} p-4 shadow-sm sticky top-0 z-50 flex justify-between items-center transition-colors duration-300`}>
                         <div className="flex items-center gap-3">
                             <div onClick={persistData} className="flex items-center justify-center cursor-pointer active:scale-90 relative transition-all duration-300">
@@ -670,6 +649,7 @@
                                     </div>
                                 </div>
 
+                                {/* Sección de Terminales - Movida abajo de Deducciones */}
                                 <div className={`${cardBgClass} p-4 rounded-2xl shadow-sm border`}>
                                     <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2 flex justify-between">Terminales Bancarias <span>Total: ${formatCurrency(summaryData.totalTerminals)}</span></h3>
                                     <div className="space-y-6">
@@ -707,7 +687,7 @@
                                 <div className={`${cardBgClass} p-6 rounded-3xl shadow-xl border`}>
                                     <div className="space-y-4">
                                         <div><h3 className="text-[10px] font-black uppercase text-gray-400 mb-2 border-b">Sucursales</h3>{summaryData.detailByBranch.map((b, i) => (<div key={i} className="flex justify-between text-sm py-1 border-b border-gray-50"><span className="text-gray-500">{b.name}</span><span className="font-black">$ {formatCurrency(b.total)}</span></div>))}<div className={`flex justify-between font-black text-lg pt-2 ${themeClass}`}><span>TOTAL VENTAS</span><span>$ {formatCurrency(summaryData.totalGross)}</span></div></div>
-                                        <div className="pt-4 border-t"><h3 className="text-[10px] font-black uppercase text-gray-400 mb-2">Deducciones</h3>{summaryData.paymentsBySeller.map((p, i) => (<div key={i} className="flex justify-between text-xs py-1"><span className="italic text-gray-400">{p.name}</span><span className="font-bold text-rose-500">-$ {formatCurrency(p.amount)}</span></div>))}{Object.entries(summaryData.groupedExtras).map(([k, d]) => (<div key={k} className="flex justify-between text-sm py-1"><span className="text-gray-500">{k}:</span><span className="font-black text-rose-500">-$ {formatCurrency(d.amount)}</span></div>))}<div className="flex justify-between font-black text-lg pt-4 border-t"><span>TOTAL DÍA</span><span>$ {formatCurrency(summaryData.totalDay)}</span></div><div className="flex flex-col gap-1 pt-2">{activeTerminals.map(t => { const amt = getTerminalAmountLocal(t.id, 'morning') + getTerminalAmountLocal(t.id, 'afternoon'); if (amt > 0) return <div key={t.id} className="flex justify-between text-sm italic opacity-70"><span className="text-gray-400">{t.name}:</span><span className="font-black text-emerald-600">-$ {formatCurrency(amt)}</span></div>; return null; })}</div></div>
+                                        <div className="pt-4 border-t"><h3 className="text-[10px] font-black uppercase text-gray-400 mb-2">Deducciones</h3>{summaryData.paymentsBySeller.map((p, i) => (<div key={i} className="flex justify-between text-xs py-1"><span className="italic text-gray-400">{p.name}</span><span className="font-bold text-rose-500">-$ {formatCurrency(p.amount)}</span></div>))}{Object.entries(summaryData.groupedExtras).map(([k, d]) => (<div key={k} className="flex justify-between text-sm py-1"><span className="text-gray-500">{k}:</span><span className="font-black text-rose-500">-$ {formatCurrency(d.amount)}</span></div>))}<div className="flex justify-between font-black text-lg pt-4 border-t"><span>TOTAL DÍA</span><span>$ {formatCurrency(summaryData.totalDay)}</span></div><div className="flex justify-between text-sm pt-2"><span className="text-gray-400">Terminales:</span><span className="font-black text-emerald-600">-$ {formatCurrency(summaryData.totalTerminals)}</span></div></div>
                                         <button onClick={copySummaryText} className={`w-full ${getThemeClass('bg')} ${getThemeClass('headerText')} p-6 rounded-2xl shadow-lg border-2 ${getThemeClass('border')} text-center relative overflow-hidden transition-all active:scale-[0.98]`}><p className="text-xs uppercase font-black opacity-60 mb-1">Efectivo Total</p><p className="text-5xl font-black">$ {formatCurrency(summaryData.totalCash)}</p><LucideIcon name="banknote" size={100} className="absolute -right-4 -bottom-4 opacity-10 rotate-12" /></button>
                                     </div>
                                 </div>
@@ -715,7 +695,7 @@
                         )}
 
                         {view === 'settings' && (
-                            <div className="space-y-6 animate-in pb-safe">
+                            <div className="space-y-6 animate-in">
                                 <div className={`${getThemeClass('bg')} ${getThemeClass('headerText')} p-5 rounded-2xl flex justify-between items-center shadow-sm border ${getThemeClass('border')}`}>
                                     <div><h2 className="font-black text-lg">Copia de Seguridad</h2><p className="text-[10px] font-bold opacity-70">Respalda registros localmente</p></div>
                                     <div className="flex gap-2">
@@ -775,6 +755,7 @@
 
                     <Navigation currentView={view} setView={setView} theme={theme} />
 
+                    {/* Modales */}
                     {conceptModal.show && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if(e.target === e.currentTarget) setConceptModal(pv => ({ ...pv, show: false })); }}>
                             <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in`}>
@@ -859,6 +840,7 @@
                         </div>
                     )}
 
+                    {/* Modal Menú Secreto - Inversiones */}
                     {showSecretModal && (
                         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in" onClick={(e) => { if(e.target === e.currentTarget) setShowSecretModal(false); }}>
                             <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border flex flex-col max-h-[80vh]`}>
@@ -939,8 +921,4 @@
         }
     </script>
 </body>
-</html>--- START OF FILE components/Navigation.tsx ---
-
-// Archivo movido a index.html--- START OF FILE App.tsx ---
-
-// Archivo movido a index.htmlno se ve el icono cuando añado un acceso directo en mi android y tapoco se ve pantalla completa. Revisa que el código de la opción de resumen donde copiamos la información a texto, NO TENGA el encabezado que dice terminales y QUE SE SUBA la primera terminal justo debajo de donde dice total día. QUE QUITE el total de terminales y suba el total efectivo justo debajo de la última terminal.
+</html>
