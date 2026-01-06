@@ -190,6 +190,9 @@
             };
 
             const persistData = async () => {
+                // Si la app está cargando datos por primera vez, no guardar
+                if (sellers.length === 0) return;
+
                 setSaveStatus('loading');
                 const dataToSave = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
                 localStorage.setItem('vendas_app_data', JSON.stringify(dataToSave));
@@ -208,8 +211,18 @@
                 } else {
                     setSaveStatus('success');
                 }
+                // Mantener el estado de éxito un momento y luego volver a idle para permitir nuevos disparos visuales
                 setTimeout(() => setSaveStatus('idle'), 2000);
             };
+
+            // Efecto para auto-guardado con debounce
+            useEffect(() => {
+                if (sellers.length === 0) return;
+                const timer = setTimeout(() => {
+                    persistData();
+                }, 1000); // 1 segundo de calma antes de subir a la nube
+                return () => clearTimeout(timer);
+            }, [sales, payments, branchClosures, terminalEntries, extraExpenses, sellers, branches, terminals, theme, isDarkMode]);
 
             const exportBackup = () => {
                 const data = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
@@ -252,6 +265,32 @@
             const activeBranches = useMemo(() => branches.filter(b => b.active).sort((a,b) => a.order - b.order), [branches]);
             const activeTerminals = useMemo(() => terminals.filter(t => t.active).sort((a,b) => a.order - b.order), [terminals]);
 
+            // Ordenamiento dinámico solicitado para Mañana y Tarde
+            // Mayor valor arriba, $0 cuenta como registro (va antes que los vacíos).
+            const sortedSellersForSales = useMemo(() => {
+                const shift = (view === 'morning' || view === 'afternoon') ? view : null;
+                if (!shift) return activeSellers;
+                
+                return [...activeSellers].sort((a, b) => {
+                    const entryA = sales.find(s => s.date === selectedDate && s.sellerId === a.id && s.shift === shift);
+                    const entryB = sales.find(s => s.date === selectedDate && s.sellerId === b.id && s.shift === shift);
+                    
+                    const hasA = entryA !== undefined;
+                    const hasB = entryB !== undefined;
+                    
+                    // Si ambos tienen registro (incluyendo $0), ordenar por monto descendente
+                    if (hasA && hasB) {
+                        return entryB.amount - entryA.amount;
+                    }
+                    // Priorizar el que tiene registro sobre el que no
+                    if (hasA) return -1;
+                    if (hasB) return 1;
+                    
+                    // Si ninguno tiene registro, orden original
+                    return a.order - b.order;
+                });
+            }, [activeSellers, sales, selectedDate, view]);
+
             const getSaleAmount = (sellerId, shift) => sales.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift)?.amount || 0;
             const getSaleEntry = (sellerId, shift) => sales.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
             const getPaymentAmount = (sellerId, shift) => payments.find(p => p.date === selectedDate && p.sellerId === sellerId && p.shift === shift)?.amount || 0;
@@ -261,6 +300,7 @@
 
             const handleSaleChange = (sellerId, shift, value) => {
                 const amount = parseFloat(value) || 0;
+                setSaveStatus('loading'); // Encendido inmediato del triángulo
                 setSales(prev => {
                     const existing = prev.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
                     const filtered = prev.filter(s => !(s.date === selectedDate && s.sellerId === sellerId && s.shift === shift));
@@ -279,6 +319,7 @@
 
             const saveCommission = () => {
                 const { sellerId, shift, tempType, tempM20, tempM25 } = commissionModal;
+                setSaveStatus('loading');
                 setSales(prev => {
                     const existing = prev.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
                     const filtered = prev.filter(s => !(s.date === selectedDate && s.sellerId === sellerId && s.shift === shift));
@@ -295,11 +336,13 @@
 
             const handlePaymentChange = (sellerId, shift, value) => {
                 const amount = parseFloat(value) || 0;
+                setSaveStatus('loading');
                 setPayments(prev => [...prev.filter(p => !(p.date === selectedDate && p.sellerId === sellerId && p.shift === shift)), { date: selectedDate, sellerId, amount, shift, calculated: false }]);
             };
 
             const handleBranchClosureChange = (branchId, field, value) => {
                 const amount = parseFloat(value) || 0;
+                setSaveStatus('loading');
                 setBranchClosures(prev => {
                     const existing = prev.find(b => b.date === selectedDate && b.branchId === branchId);
                     const filtered = prev.filter(b => !(b.date === selectedDate && b.branchId === branchId));
@@ -309,11 +352,13 @@
 
             const handleTerminalChange = (terminalId, shift, value) => {
                 const amount = parseFloat(value) || 0;
+                setSaveStatus('loading');
                 setTerminalEntries(prev => [...prev.filter(t => !(t.date === selectedDate && t.terminalId === terminalId && t.shift === shift)), { date: selectedDate, terminalId, amount, shift }]);
             };
 
             const handleExtraExpenseChange = (type, shift, value) => {
                 const amount = parseFloat(value) || 0;
+                setSaveStatus('loading');
                 setExtraExpenses(prev => {
                     const dayEntries = prev.filter(e => e.date === selectedDate && e.type === type);
                     const desc = dayEntries.length > 0 ? dayEntries[0].description : (type === 'gasto' ? 'Gasto' : 'Garantía');
@@ -329,6 +374,7 @@
             const saveConcept = () => {
                 const { type, tempDescription } = conceptModal;
                 const conceptToSave = tempDescription || (type === 'gasto' ? 'Gasto' : 'Garantía');
+                setSaveStatus('loading');
                 setExtraExpenses(prev => {
                     const dayEntries = prev.filter(e => e.date === selectedDate && e.type === type);
                     if (dayEntries.length > 0) return prev.map(e => (e.date === selectedDate && e.type === type) ? { ...e, description: conceptToSave } : e);
@@ -397,8 +443,15 @@
                 <div className={`min-h-screen pb-24 ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} flex flex-col transition-colors duration-500`}>
                     <header className={`${getThemeClass('bg')} ${getThemeClass('headerText')} p-4 shadow-sm sticky top-0 z-50 flex justify-between items-center transition-colors duration-300`}>
                         <div className="flex items-center gap-3">
+                            {/* Ícono del Triángulo con estados de guardado: Carga (Pulso), Éxito (Verde claro), Error (Rojo) */}
                             <div onClick={persistData} className={`w-8 h-8 bg-white/60 rounded-lg flex items-center justify-center shadow-sm cursor-pointer transition-all active:scale-90 relative`}>
-                                <Icon name="Triangle" size={20} fill="currentColor" className={saveStatus === 'success' ? 'text-lime-500' : (saveStatus === 'loading' ? 'animate-pulse text-gray-400' : getThemeClass('text'))} />
+                                <Icon name="Triangle" size={20} fill="currentColor" 
+                                    className={
+                                        saveStatus === 'success' ? 'text-lime-400' : 
+                                        saveStatus === 'error' ? 'text-red-500' : 
+                                        saveStatus === 'loading' ? 'animate-pulse text-gray-400' : getThemeClass('text')
+                                    } 
+                                />
                                 {saveStatus === 'loading' && <div className="absolute inset-0 border-2 border-gray-300 border-t-indigo-500 rounded-lg animate-spin" />}
                             </div>
                             <h1 className="text-xl font-black tracking-tighter select-none">TRIANGULO APP</h1>
@@ -426,7 +479,7 @@
                             <div className={`${cardBg} p-4 rounded-2xl shadow-sm border animate-in`}>
                                 <h2 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2">Ventas {view === 'morning' ? 'Mañana' : 'Tarde'}</h2>
                                 <div className="space-y-3">
-                                    {activeSellers.map(seller => {
+                                    {sortedSellersForSales.map(seller => {
                                         const entry = getSaleEntry(seller.id, view);
                                         return (
                                             <div key={seller.id} className={`flex items-center justify-between gap-4 p-2 ${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-xl border ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
@@ -556,15 +609,16 @@
                                 </div>
                                 <div className={`${cardBg} p-5 rounded-2xl border shadow-sm`}>
                                     <div className="flex items-center justify-between mb-4"><h2 className="font-black text-lg">Personalización</h2>
-                                        <button onClick={() => setIsDarkMode(!isDarkMode)} className={`flex items-center gap-2 p-2 px-3 rounded-xl border transition-all ${isDarkMode ? 'bg-gray-800 text-amber-300' : 'bg-gray-50 text-indigo-500'}`}>{isDarkMode ? <Icon name="Sun" size={20} /> : <Icon name="Moon" size={20} />}</button>
+                                        <button onClick={() => { setIsDarkMode(!isDarkMode); setSaveStatus('loading'); }} className={`flex items-center gap-2 p-2 px-3 rounded-xl border transition-all ${isDarkMode ? 'bg-gray-800 text-amber-300' : 'bg-gray-50 text-indigo-500'}`}>{isDarkMode ? <Icon name="Sun" size={20} /> : <Icon name="Moon" size={20} />}</button>
                                     </div>
-                                    <div className="flex justify-between gap-2">{(['indigo', 'emerald', 'rose', 'amber', 'slate']).map(t => (<button key={t} onClick={() => setTheme(t)} className={`w-10 h-10 rounded-full border-2 transition-all ${theme === t ? 'ring-2 ring-offset-2 ring-gray-400 scale-110 shadow-md' : 'border-transparent'} ${themeColors[t].dot}`} />))}</div>
+                                    <div className="flex justify-between gap-2">{(['indigo', 'emerald', 'rose', 'amber', 'slate']).map(t => (<button key={t} onClick={() => { setTheme(t); setSaveStatus('loading'); }} className={`w-10 h-10 rounded-full border-2 transition-all ${theme === t ? 'ring-2 ring-offset-2 ring-gray-400 scale-110 shadow-md' : 'border-transparent'} ${themeColors[t].dot}`} />))}</div>
                                 </div>
                                 {[{ label: 'Vendedores', type: 'seller', items: sellers }, { label: 'Sucursales', type: 'branch', items: branches }, { label: 'Terminales', type: 'terminal', items: terminals }].map(section => (
                                     <div key={section.type} className={`${cardBg} p-5 rounded-2xl border shadow-sm`}>
                                         <div className="flex justify-between items-center mb-5"><h2 className="font-black text-xl">{section.label}</h2><button onClick={() => {
                                             const newId = Date.now().toString(); const list = section.items; const max = list.length > 0 ? Math.max(...list.map(i => i.order)) : -1;
                                             const newItem = { id: newId, name: `${section.label} ${list.length + 1}`, active: true, order: max + 1 };
+                                            setSaveStatus('loading');
                                             if (section.type === 'seller') setSellers(prev => [...prev, newItem]); else if (section.type === 'branch') setBranches(prev => [...prev, newItem]); else if (section.type === 'terminal') setTerminals(prev => [...prev, newItem]);
                                         }} className={`p-2 px-4 ${getThemeClass('btn')} text-white rounded-full text-xs font-black shadow-sm`}>+ AÑADIR</button></div>
                                         <div className="space-y-3">
@@ -573,12 +627,15 @@
                                                     <div className="flex items-center gap-3 flex-1">
                                                         <div className="relative" onClick={() => { setTargetIdForPhoto({ id: item.id, type: section.type }); photoInputRef.current.click(); }}><VisualPreview source={item.image} /><div className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow-sm border"><Icon name="Camera" size={10} /></div></div>
                                                         <input type="text" value={item.name} onChange={(e) => {
-                                                            const n = e.target.value; if (section.type === 'seller') setSellers(prev => prev.map(s => s.id === item.id ? {...s, name: n} : s));
+                                                            const n = e.target.value; 
+                                                            setSaveStatus('loading');
+                                                            if (section.type === 'seller') setSellers(prev => prev.map(s => s.id === item.id ? {...s, name: n} : s));
                                                             else if (section.type === 'branch') setBranches(prev => prev.map(b => b.id === item.id ? {...b, name: n} : b));
                                                             else if (section.type === 'terminal') setTerminals(prev => prev.map(t => t.id === item.id ? {...t, name: n} : t));
                                                         }} className="font-black text-sm bg-transparent border-none focus:ring-0 w-full outline-none" />
                                                     </div>
                                                     <button onClick={() => {
+                                                        setSaveStatus('loading');
                                                         if (section.type === 'seller') setSellers(prev => prev.map(s => s.id === item.id ? {...s, active: !s.active} : s));
                                                         else if (section.type === 'branch') setBranches(prev => prev.map(b => b.id === item.id ? {...b, active: !b.active} : b));
                                                         else if (section.type === 'terminal') setTerminals(prev => prev.map(t => t.id === item.id ? {...t, active: !t.active} : t));
@@ -596,6 +653,7 @@
                                         img.onload = () => { 
                                             const canvas = document.createElement('canvas'); const scale = 120 / img.width; canvas.width = 120; canvas.height = img.height * scale; 
                                             canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height); const b = canvas.toDataURL('image/jpeg', 0.6); const { id, type } = targetIdForPhoto; 
+                                            setSaveStatus('loading');
                                             if (type === 'seller') setSellers(pv => pv.map(s => s.id === id ? {...s, image: b} : s)); 
                                             else if (type === 'branch') setBranches(pv => pv.map(br => br.id === id ? {...br, image: b} : br)); 
                                             else if (type === 'terminal') setTerminals(pv => pv.map(t => t.id === id ? {...t, image: b} : t)); 
@@ -671,8 +729,16 @@
                                         <p className="text-[10px] font-black uppercase opacity-60">Pagar</p>
                                         <p className="text-4xl font-black tracking-tight">$ {formatCurrency(calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</p>
                                         <div className="grid grid-cols-2 gap-2">
-                                            <button onClick={() => { const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'morning')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'morning', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Mañana</button>
-                                            <button onClick={() => { const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'afternoon')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'afternoon', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Tarde</button>
+                                            <button onClick={() => { 
+                                                const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); 
+                                                setSaveStatus('loading');
+                                                setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'morning')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'morning', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); 
+                                            }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Mañana</button>
+                                            <button onClick={() => { 
+                                                const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); 
+                                                setSaveStatus('loading');
+                                                setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'afternoon')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'afternoon', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); 
+                                            }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Tarde</button>
                                         </div>
                                     </div>
                                 </div>
