@@ -5,20 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TRIANGULO APP</title>
     
-    <!-- Configuración App Nativa (iOS y Android) -->
+    <!-- Configuración para App Nativa / PWA -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Triangulo">
-    <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="Triangulo">
     <meta name="theme-color" content="#000000">
 
-    <!-- Icono SVG Profesional Integrado -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='black'/%3E%3Cg transform='translate(0, -20)'%3E%3Cpath d='M256 60 L460 400 L52 400 Z' fill='red'/%3E%3Cpath d='M256 110 L410 375 L102 375 Z' fill='black'/%3E%3Cpath d='M256 160 L360 350 L152 350 Z' fill='red'/%3E%3Cpath d='M256 210 L310 325 L202 325 Z' fill='black'/%3E%3Cpath d='M256 260 L285 305 L227 305 Z' fill='red'/%3E%3Cpath d='M256 280 L270 300 L242 300 Z' fill='black'/%3E%3C/g%3E%3Ctext x='256' y='465' font-family='Inter, sans-serif' font-weight='900' font-size='48' fill='white' text-anchor='middle'%3ETRIANGULO APP%3C/text%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='black'/%3E%3Cg transform='translate(0, -20)'%3E%3Cpath d='M256 60 L460 400 L52 400 Z' fill='red'/%3E%3Cpath d='M256 110 L410 375 L102 375 Z' fill='black'/%3E%3Cpath d='M256 160 L360 350 L152 350 Z' fill='red'/%3E%3Cpath d='M256 210 L310 325 L202 325 Z' fill='black'/%3E%3Cpath d='M256 260 L285 305 L227 305 Z' fill='red'/%3E%3Cpath d='M256 280 L270 300 L242 300 Z' fill='black'/%3E%3C/g%3E%3Ctext x='256' y='465' font-family='Inter, sans-serif' font-weight='900' font-size='48' fill='white' text-anchor='middle'%3ETRIANGULO APP%3C/text%3E%3C/svg%3E">
+    <!-- Icono SVG Profesional (Fondo Negro, 6 Triángulos Rojo/Negro) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%23000000'/%3E%3Cg transform='translate(0, -20)'%3E%3Cpath d='M256 60 L460 400 L52 400 Z' fill='%23FF0000'/%3E%3Cpath d='M256 110 L410 375 L102 375 Z' fill='%23000000'/%3E%3Cpath d='M256 160 L360 350 L152 350 Z' fill='%23FF0000'/%3E%3Cpath d='M256 210 L310 325 L202 325 Z' fill='%23000000'/%3E%3Cpath d='M256 260 L285 305 L227 305 Z' fill='%23FF0000'/%3E%3Cpath d='M256 280 L270 300 L242 300 Z' fill='%23000000'/%3E%3C/g%3E%3Ctext x='256' y='465' font-family='Arial, sans-serif' font-weight='900' font-size='48' fill='%23FFFFFF' text-anchor='middle'%3ETRIANGULO APP%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%23000000'/%3E%3Cg transform='translate(0, -20)'%3E%3Cpath d='M256 60 L460 400 L52 400 Z' fill='%23FF0000'/%3E%3Cpath d='M256 110 L410 375 L102 375 Z' fill='%23000000'/%3E%3Cpath d='M256 160 L360 350 L152 350 Z' fill='%23FF0000'/%3E%3Cpath d='M256 210 L310 325 L202 325 Z' fill='%23000000'/%3E%3Cpath d='M256 260 L285 305 L227 305 Z' fill='%23FF0000'/%3E%3Cpath d='M256 280 L270 300 L242 300 Z' fill='%23000000'/%3E%3C/g%3E%3Ctext x='256' y='465' font-family='Arial, sans-serif' font-weight='900' font-size='48' fill='%23FFFFFF' text-anchor='middle'%3ETRIANGULO APP%3C/text%3E%3C/svg%3E">
 
-    <!-- Web App Manifest -->
-    <link rel="manifest" href='data:application/manifest+json,{"name":"TRIANGULO APP","short_name":"Triangulo","start_url":".","display":"standalone","background_color":"#000000","theme_color":"#000000","orientation":"portrait","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='black'/%3E%3Cg transform='translate(0, -20)'%3E%3Cpath d='M256 60 L460 400 L52 400 Z' fill='red'/%3E%3Cpath d='M256 110 L410 375 L102 375 Z' fill='black'/%3E%3Cpath d='M256 160 L360 350 L152 350 Z' fill='red'/%3E%3Cpath d='M256 210 L310 325 L202 325 Z' fill='black'/%3E%3Cpath d='M256 260 L285 305 L227 305 Z' fill='red'/%3E%3Cpath d='M256 280 L270 300 L242 300 Z' fill='black'/%3E%3C/g%3E%3Ctext x='256' y='465' font-family='Inter, sans-serif' font-weight='900' font-size='48' fill='white' text-anchor='middle'%3ETRIANGULO APP%3C/text%3E%3C/svg%3E","sizes":"512x512","type":"image/svg+xml"}]}'>
+    <!-- Web App Manifest codificado para compatibilidad máxima -->
+    <link rel="manifest" href='data:application/manifest+json,%7B%22name%22%3A%22TRIANGULO%20APP%22%2C%22short_name%22%3A%22Triangulo%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23000000%22%2C%22orientation%22%3A%22portrait%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520viewBox%253D%25220%25200%2520512%2520512%2522%253E%253Crect%2520width%253D%2522512%2522%2520height%253D%2522512%2522%2520fill%253D%2522%2523000000%2522%252F%253E%253Cg%2520transform%253D%2522translate(0%252C%2520-20)%2522%253E%253Cpath%2520d%253D%2522M256%252060%2520L460%2520400%2520L52%2520400%2520Z%2522%2520fill%253D%2522%2523FF0000%2522%252F%253E%253Cpath%2520d%253D%2522M256%2520110%2520L410%2520375%2520L102%2520375%2520Z%2522%2520fill%253D%2522%2523000000%2522%252F%253E%253Cpath%2520d%253D%2522M256%2520160%2520L360%2520350%2520L152%2520350%2520Z%2522%2520fill%253D%2522%2523FF0000%2522%252F%253E%253Cpath%2520d%253D%2522M256%2520210%2520L310%2520325%2520L202%2520325%2520Z%2522%2520fill%253D%2522%2523000000%2522%252F%253E%253Cpath%2520d%253D%2522M256%2520260%2520L285%2520305%2520L227%2520305%2520Z%2522%2520fill%253D%2522%2523FF0000%2522%252F%253E%253Cpath%2520d%253D%2522M256%2520280%2520L270%2520300%2520L242%2520300%2520Z%2522%2520fill%253D%2522%2523000000%2522%252F%253E%253C%252Fg%253E%253Ctext%2520x%253D%2522256%2522%2520y%253D%2522465%2522%2520font-family%253D%2522Arial%2522%2520font-weight%253D%2522900%2522%2520font-size%253D%252248%2522%2520fill%253D%2522%2523FFFFFF%2522%2520text-anchor%253D%2522middle%2522%253ETRIANGULO%2520APP%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D'>
 
     <!-- Librerías Externas via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
@@ -71,7 +71,7 @@
         .triangle-base { transition: all 0.3s ease; }
         .triangle-flash-success { animation: flash-success 1s ease-out forwards; color: #bef264 !important; }
         .triangle-flash-error { animation: flash-error 1s ease-out forwards; color: #fca5a5 !important; }
-        .triangle-growing { animation: grow-save 1s ease-in-out infinite; color: #6366f1 !important; }
+        .triangle-growing { animation: grow-save 1s ease-in-out infinite; color: #FF0000 !important; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-500">
@@ -939,4 +939,8 @@
         }
     </script>
 </body>
-</html>
+</html>--- START OF FILE components/Navigation.tsx ---
+
+// Archivo movido a index.html--- START OF FILE App.tsx ---
+
+// Archivo movido a index.htmlno se ve el icono cuando añado un acceso directo en mi android y tapoco se ve pantalla completa. Revisa que el código de la opción de resumen donde copiamos la información a texto, NO TENGA el encabezado que dice terminales y QUE SE SUBA la primera terminal justo debajo de donde dice total día. QUE QUITE el total de terminales y suba el total efectivo justo debajo de la última terminal.
