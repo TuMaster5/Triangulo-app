@@ -164,6 +164,7 @@
             const [branchClosures, setBranchClosures] = useState([]);
             const [terminalEntries, setTerminalEntries] = useState([]);
             const [extraExpenses, setExtraExpenses] = useState([]);
+            const [investments, setInvestments] = useState([]); // Nueva persistencia de inversiones
 
             const [commissionModal, setCommissionModal] = useState({ show: false, sellerId: '', shift: 'morning', tempType: 'none', tempM20: 0, tempM25: 0 });
             const [conceptModal, setConceptModal] = useState({ show: false, type: 'gasto', tempDescription: '' });
@@ -172,6 +173,12 @@
                 startDate: '', 
                 endDate: ''
             });
+
+            // Estado para el menú secreto
+            const [headerClicks, setHeaderClicks] = useState(0);
+            const [lastHeaderClick, setLastHeaderClick] = useState(0);
+            const [showSecretModal, setShowSecretModal] = useState(false);
+            const [newInvestment, setNewInvestment] = useState({ concept: '', amount: '' });
 
             // --- REFS ---
             const fileInputRef = useRef(null);
@@ -202,6 +209,7 @@
                 if (p.branchClosures) setBranchClosures(p.branchClosures);
                 if (p.terminalEntries) setTerminalEntries(p.terminalEntries); 
                 if (p.extraExpenses) setExtraExpenses(p.extraExpenses);
+                if (p.investments) setInvestments(p.investments);
                 if (p.theme) setTheme(p.theme); 
                 if (p.isDarkMode !== undefined) {
                     setIsDarkMode(p.isDarkMode);
@@ -343,7 +351,7 @@
             const persistData = async () => {
                 if (sellers.length === 0) return;
                 setSaveStatus('loading');
-                const dataToSave = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
+                const dataToSave = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, investments, theme, isDarkMode };
                 localStorage.setItem('vendas_app_data', JSON.stringify(dataToSave));
                 if (supabaseClient) {
                     try {
@@ -357,9 +365,45 @@
             useEffect(() => {
                 const timer = setTimeout(() => { if(sellers.length > 0) persistData(); }, 1500);
                 return () => clearTimeout(timer);
-            }, [sales, payments, branchClosures, terminalEntries, extraExpenses, sellers, branches, terminals, theme, isDarkMode]);
+            }, [sales, payments, branchClosures, terminalEntries, extraExpenses, investments, sellers, branches, terminals, theme, isDarkMode]);
 
             // --- HANDLERS ---
+            const handleHeaderClick = () => {
+                const now = Date.now();
+                if (now - lastHeaderClick < 500) {
+                    const newCount = headerClicks + 1;
+                    if (newCount === 5) {
+                        setShowSecretModal(true);
+                        setHeaderClicks(0);
+                    } else {
+                        setHeaderClicks(newCount);
+                    }
+                } else {
+                    setHeaderClicks(1);
+                }
+                setLastHeaderClick(now);
+            };
+
+            const addInvestment = () => {
+                if (!newInvestment.concept || !newInvestment.amount) return;
+                const entry = {
+                    id: Date.now().toString(),
+                    date: selectedDate,
+                    concept: newInvestment.concept,
+                    amount: parseFloat(newInvestment.amount) || 0
+                };
+                setInvestments(prev => [...prev, entry]);
+                setNewInvestment({ concept: '', amount: '' });
+            };
+
+            const removeInvestment = (id) => {
+                setInvestments(prev => prev.filter(i => i.id !== id));
+            };
+
+            const dayInvestments = useMemo(() => {
+                return investments.filter(i => i.date === selectedDate);
+            }, [investments, selectedDate]);
+
             const handleSaleChange = (sellerId, shift, value) => {
                 const amount = value === "" ? undefined : (parseFloat(value) || 0);
                 setSales(prev => {
@@ -429,17 +473,28 @@
             };
 
             const copySummaryText = () => {
-                const s = summaryData; let text = `${getFormattedDateLong(s.date)}\n\n`;
+                const s = summaryData; 
+                let text = `${getFormattedDateLong(s.date)}\n\n`;
                 s.detailByBranch.forEach(b => { text += `- ${b.name}: $${formatCurrency(b.total)}\n`; });
                 text += `TOTAL VENTAS: $${formatCurrency(s.totalGross)}\n\nDEDUCCIONES\n`;
                 s.paymentsBySeller.forEach(p => { text += `- Pago ${p.name}: $${formatCurrency(p.amount)}\n`; });
                 Object.entries(s.groupedExtras).forEach(([k, d]) => { if (d.amount > 0) text += `- ${k}: $${formatCurrency(d.amount)}\n`; });
-                text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n*TOTAL DÍA: $${formatCurrency(s.totalDay)}*\nTOTAL TERMINALES: $${formatCurrency(s.totalTerminals)}\nTOTAL EFECTIVO: $${formatCurrency(s.totalCash)}`;
+                text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n*TOTAL DÍA: $${formatCurrency(s.totalDay)}*\n`;
+                
+                // Desglose de Terminales - Subido justo debajo de TOTAL DÍA y sin encabezado
+                activeTerminals.forEach(t => {
+                    const amt = getTerminalAmountLocal(t.id, 'morning') + getTerminalAmountLocal(t.id, 'afternoon');
+                    if (amt > 0) {
+                        text += `- ${t.name}: $${formatCurrency(amt)}\n`;
+                    }
+                });
+                
+                text += `TOTAL EFECTIVO: $${formatCurrency(s.totalCash)}`;
                 navigator.clipboard.writeText(text); alert('Resumen copiado');
             };
 
             const exportBackup = () => {
-                const data = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
+                const data = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, investments, theme, isDarkMode };
                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                 const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `respaldo_triangulo_${selectedDate}.json`; link.click();
             };
@@ -465,7 +520,7 @@
                                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                                 </svg>
                             </div>
-                            <h1 className="text-xl font-black tracking-tighter select-none">TRIANGULO APP</h1>
+                            <h1 onClick={handleHeaderClick} className="text-xl font-black tracking-tighter select-none cursor-pointer">TRIANGULO APP</h1>
                         </div>
                         <button onClick={() => setView(view === 'settings' ? 'morning' : 'settings')} className={`p-2 rounded-full transition-all ${view === 'settings' ? 'bg-white ' + themeClass : 'bg-white/40'}`}>
                             {view === 'settings' ? <LucideIcon name="x" size={22} /> : <LucideIcon name="settings" size={22} />}
@@ -571,6 +626,7 @@
                                         </div>
                                     );
                                 })}
+
                                 <div className={`${cardBgClass} p-4 rounded-2xl shadow-sm border`}>
                                     <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2 flex justify-between">Deducciones y Garantías <span>Total: ${formatCurrency(summaryData.totalGastos + summaryData.totalGarantias)}</span></h3>
                                     <div className="space-y-6">
@@ -592,6 +648,30 @@
                                         ))}
                                     </div>
                                 </div>
+
+                                {/* Sección de Terminales - Movida abajo de Deducciones */}
+                                <div className={`${cardBgClass} p-4 rounded-2xl shadow-sm border`}>
+                                    <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2 flex justify-between">Terminales Bancarias <span>Total: ${formatCurrency(summaryData.totalTerminals)}</span></h3>
+                                    <div className="space-y-6">
+                                        {activeTerminals.map(t => (
+                                            <div key={t.id}>
+                                                <div className="text-[10px] uppercase font-black flex items-center gap-2 mb-2 opacity-70">
+                                                    <VisualPreview source={t.image} size="6" isDarkMode={isDarkMode} />
+                                                    {t.name}
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    {['morning', 'afternoon'].map(shift => (
+                                                        <div key={shift} className="relative">
+                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 text-xs font-bold opacity-60">$</span>
+                                                            <input type="number" value={getTerminalAmountLocal(t.id, shift) || ''} onChange={(e) => handleTerminalChange(t.id, shift, e.target.value)} className={`w-full pl-7 pr-3 p-3 ${shift === 'morning' ? morningFieldBg : afternoonFieldBg} border-emerald-200 border rounded-xl font-black text-emerald-600 outline-none focus:ring-2 focus:ring-emerald-400`} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-4 mt-6">
                                     <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/50' : 'bg-yellow-100 border-yellow-200'} shadow-sm text-center`}><p className="text-[10px] font-black uppercase text-yellow-600 dark:text-yellow-400 mb-1 tracking-wider">Efectivo Mañana</p><p className="text-2xl font-black text-yellow-700 dark:text-yellow-500 leading-none">$ {formatCurrency(summaryData.morningCashFinal)}</p></div>
                                     <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-blue-900/30 border-blue-700/50' : 'bg-blue-100 border-blue-200'} shadow-sm text-center`}><p className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Efectivo Tarde</p><p className="text-2xl font-black text-blue-700 dark:text-blue-500 leading-none">$ {formatCurrency(summaryData.afternoonCashFinal)}</p></div>
@@ -755,6 +835,77 @@
                                     <div className="space-y-1 pt-2 border-t"><div className="flex justify-between items-center p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-[10px] font-black text-emerald-600 uppercase"><span>Total Comisiones</span><span>$ {formatCurrency(calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</span></div><div className="flex justify-between items-center p-2 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-[10px] font-black text-rose-600 uppercase"><span>Total A cuenta</span><span>-$ {formatCurrency(calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</span></div></div>
                                     <input type="number" placeholder="Sueldo Base" value={paymentCalcModal.baseSalary || ''} onChange={e => setPaymentCalcModal(pv => ({...pv, baseSalary: parseFloat(e.target.value) || 0}))} className={`w-full p-4 ${inputBgClass} border rounded-xl font-black shadow-inner`} />
                                     <div className="p-5 rounded-2xl bg-indigo-500 text-white shadow-xl text-center space-y-4"><p className="text-[10px] font-black uppercase opacity-60">Pagar</p><p className="text-4xl font-black tracking-tight">$ {formatCurrency(calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</p><div className="grid grid-cols-2 gap-2"><button onClick={() => { const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'morning')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'morning', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Mañana</button><button onClick={() => { const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'afternoon')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'afternoon', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Tarde</button></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modal Menú Secreto - Inversiones */}
+                    {showSecretModal && (
+                        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in" onClick={(e) => { if(e.target === e.currentTarget) setShowSecretModal(false); }}>
+                            <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border flex flex-col max-h-[80vh]`}>
+                                <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}>
+                                    <div className="flex items-center gap-2">
+                                        <LucideIcon name="landmark" size={20} className={themeClass} />
+                                        <h3 className={`font-black uppercase text-sm ${themeClass}`}>Inversiones del Día</h3>
+                                    </div>
+                                    <button onClick={() => setShowSecretModal(false)}>
+                                        <LucideIcon name="x" size={24} className={themeClass} />
+                                    </button>
+                                </div>
+                                <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                                    <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} p-4 rounded-2xl space-y-3 border`}>
+                                        <p className="text-[10px] font-black uppercase opacity-50 text-center mb-1">Nueva Inversión - {getDayOfWeek(selectedDate)}</p>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Concepto" 
+                                            value={newInvestment.concept} 
+                                            onChange={e => setNewInvestment(pv => ({...pv, concept: e.target.value}))} 
+                                            className={`w-full p-3 ${inputBgClass} border rounded-xl font-bold text-sm shadow-inner`}
+                                        />
+                                        <div className="relative">
+                                            <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${themeClass} font-bold opacity-60`}>$</span>
+                                            <input 
+                                                type="number" 
+                                                placeholder="Monto" 
+                                                value={newInvestment.amount} 
+                                                onChange={e => setNewInvestment(pv => ({...pv, amount: e.target.value}))} 
+                                                className={`w-full pl-7 pr-3 p-3 ${inputBgClass} border rounded-xl font-black text-sm shadow-inner`}
+                                            />
+                                        </div>
+                                        <button 
+                                            onClick={addInvestment} 
+                                            className={`w-full py-3 rounded-xl ${getThemeClass('btn')} text-white font-black uppercase text-xs shadow-lg active:scale-95 transition-all`}
+                                        >
+                                            Añadir Inversión
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <h4 className="text-[10px] font-black uppercase text-gray-400 mb-2 border-b pb-1">Registros de {selectedDate}</h4>
+                                        {dayInvestments.length === 0 ? (
+                                            <p className="text-center text-xs text-gray-400 italic py-4">No hay inversiones registradas para hoy.</p>
+                                        ) : (
+                                            dayInvestments.map(inv => (
+                                                <div key={inv.id} className={`flex justify-between items-center p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100 shadow-sm'}`}>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold">{inv.concept}</span>
+                                                        <span className={`text-[10px] font-black ${themeClass}`}>$ {formatCurrency(inv.amount)}</span>
+                                                    </div>
+                                                    <button onClick={() => removeInvestment(inv.id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all">
+                                                        <LucideIcon name="trash-2" size={16} />
+                                                    </button>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+
+                                    {dayInvestments.length > 0 && (
+                                        <div className={`p-4 rounded-xl ${getThemeClass('bg')} ${themeClass} font-black text-center border-t border-dashed ${getThemeClass('border')}`}>
+                                            <p className="text-[9px] uppercase opacity-60">Inversión Total del Día</p>
+                                            <p className="text-2xl">$ {formatCurrency(dayInvestments.reduce((acc, curr) => acc + curr.amount, 0))}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
