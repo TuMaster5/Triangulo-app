@@ -33,25 +33,26 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-in { animation: fadeIn 0.3s ease-out forwards; }
 
-        /* Animaciones de Destello para el Triángulo */
-        @keyframes glow-success {
-            0% { filter: drop-shadow(0 0 2px #a3e635); transform: scale(1); }
-            50% { filter: drop-shadow(0 0 12px #a3e635); transform: scale(1.1); }
-            100% { filter: drop-shadow(0 0 2px #a3e635); transform: scale(1); }
+        @keyframes flash-success {
+            0% { filter: drop-shadow(0 0 0px #bef264); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 15px #bef264); transform: scale(1.1); }
+            100% { filter: drop-shadow(0 0 0px #bef264); transform: scale(1); }
         }
-        @keyframes glow-error {
-            0% { filter: drop-shadow(0 0 2px #ef4444); transform: scale(1); }
-            50% { filter: drop-shadow(0 0 12px #ef4444); transform: scale(1.1); }
-            100% { filter: drop-shadow(0 0 2px #ef4444); transform: scale(1); }
+        @keyframes flash-error {
+            0% { filter: drop-shadow(0 0 0px #fca5a5); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 15px #fca5a5); transform: scale(1.1); }
+            100% { filter: drop-shadow(0 0 0px #fca5a5); transform: scale(1); }
         }
-        @keyframes glow-loading {
-            0% { filter: drop-shadow(0 0 2px #6366f1); opacity: 0.6; }
-            50% { filter: drop-shadow(0 0 10px #6366f1); opacity: 1; }
-            100% { filter: drop-shadow(0 0 2px #6366f1); opacity: 0.6; }
+        @keyframes grow-save {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
         }
-        .triangle-success { animation: glow-success 1.5s ease-in-out infinite; }
-        .triangle-error { animation: glow-error 1s ease-in-out infinite; }
-        .triangle-loading { animation: glow-loading 1.2s ease-in-out infinite; }
+        
+        .triangle-base { transition: all 0.3s ease; }
+        .triangle-flash-success { animation: flash-success 1s ease-out forwards; color: #bef264 !important; }
+        .triangle-flash-error { animation: flash-error 1s ease-out forwards; color: #fca5a5 !important; }
+        .triangle-growing { animation: grow-save 1s ease-in-out infinite; color: #6366f1 !important; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-500">
@@ -60,64 +61,74 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // --- CONFIGURACIÓN DE SUPABASE ---
-        const SUPABASE_URL = 'https://gpkiboiatmshvwmwdnqx.supabase.co'; 
-        const SUPABASE_KEY = 'sb_publishable_hyl_Srp08L9DdwCBG7Fd-g_QX9qRUfU';
-        
-        const supabase = (SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL !== 'TU_URL_DE_SUPABASE') 
-            ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
-            : null;
-
-        const Icon = ({ name, size = 24, className = "", fill = "none" }) => {
-            const [iconElement, setIconElement] = useState(null);
-            useEffect(() => {
-                if (window.lucide && window.lucide.icons[name.toLowerCase()]) {
-                    setIconElement(window.lucide.icons[name.toLowerCase()]);
-                } else if (window.lucide && window.lucide.icons[name]) {
-                    setIconElement(window.lucide.icons[name]);
-                }
-            }, [name]);
-            if (!iconElement) return <div style={{ width: size, height: size }} />;
-            
-            // Note: Lucide React works differently in UMD. Fallback to simple svg rendering if needed.
-            return (
-                <span dangerouslySetInnerHTML={{ __html: window.lucide.createIcons({
-                    icons: { [name]: iconElement },
-                    attrs: { width: size, height: size, class: className, fill: fill, stroke: 'currentColor', 'stroke-width': 2 }
-                }) }} />
-            );
+        // --- FUNCIONES DE UTILIDAD GLOBALES ---
+        const getDayOfWeek = (dateStr) => {
+            if (!dateStr) return '';
+            const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            const d = new Date(dateStr + 'T12:00:00');
+            return days[d.getDay()];
         };
 
-        // Simplified Icon component for reliable rendering
+        const getFormattedDateLong = (dateStr) => {
+            if (!dateStr) return '';
+            const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+            const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+            const d = new Date(dateStr + 'T12:00:00');
+            const dayName = days[d.getDay()];
+            const dayNum = String(d.getDate()).padStart(2, '0');
+            const monthName = months[d.getMonth()];
+            const year = d.getFullYear();
+            return `${dayName} ${dayNum} de ${monthName} ${year}`;
+        };
+
+        const formatCurrency = (val) => {
+            const n = Math.round(val || 0);
+            return n.toLocaleString('en-US');
+        };
+
         const LucideIcon = ({ name, size = 24, className = "", fill = "none" }) => {
             return <i data-lucide={name.toLowerCase()} className={className} style={{ width: size, height: size, color: 'currentColor' }}></i>;
         };
 
+        const VisualPreview = ({ source, size = "12", hasCalculated = false, onClick, isDarkMode }) => {
+            const borderClass = hasCalculated ? 'ring-4 ring-emerald-500 ring-offset-2' : '';
+            const bg = isDarkMode ? 'bg-gray-700' : 'bg-white';
+            if (!source) return (
+                <div onClick={onClick} className={`w-${size} h-${size} rounded-xl ${bg} border border-gray-200 flex items-center justify-center text-gray-300 shadow-inner cursor-pointer transition-all ${borderClass}`}>
+                    <LucideIcon name="camera" size={20} />
+                </div>
+            );
+            return (
+                <img src={source} onClick={onClick} className={`w-${size} h-${size} rounded-xl object-cover border-2 border-white shadow-sm cursor-pointer transition-all ${borderClass}`} alt="Preview" />
+            );
+        };
+
         const Navigation = ({ currentView, setView, theme }) => {
-            const themeColors = {
+            const themeColorsMap = {
                 indigo: { text: 'text-indigo-600', activeBg: 'bg-indigo-50' },
                 emerald: { text: 'text-emerald-600', activeBg: 'bg-emerald-50' },
                 rose: { text: 'text-rose-600', activeBg: 'bg-rose-50' },
                 amber: { text: 'text-amber-600', activeBg: 'bg-amber-50' },
                 slate: { text: 'text-slate-600', activeBg: 'bg-slate-50' },
             };
-            const navItems = [
+            const colors = themeColorsMap[theme] || themeColorsMap.indigo;
+            
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [currentView]);
+
+            const items = [
                 { view: 'morning', icon: 'sun', label: 'Mañana' },
                 { view: 'afternoon', icon: 'moon', label: 'Tarde' },
                 { view: 'payments', icon: 'wallet', label: 'Pagos' },
                 { view: 'closure', icon: 'clipboard-check', label: 'Cierre' },
                 { view: 'summary', icon: 'layout-dashboard', label: 'Resumen' },
             ];
-            const colors = themeColors[theme] || themeColors.indigo;
-            
-            useEffect(() => {
-                if (window.lucide) window.lucide.createIcons();
-            }, [currentView]);
 
             return (
                 <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 px-2 py-1 z-50 transition-colors shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <div className="max-w-lg mx-auto flex justify-between items-center">
-                        {navItems.map((item) => {
+                        {items.map((item) => {
                             const isActive = currentView === item.view;
                             return (
                                 <button
@@ -138,6 +149,7 @@
         };
 
         const App = () => {
+            // --- ESTADO ---
             const [view, setView] = useState('morning');
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
             const [theme, setTheme] = useState('indigo');
@@ -157,50 +169,30 @@
             const [conceptModal, setConceptModal] = useState({ show: false, type: 'gasto', tempDescription: '' });
             const [paymentCalcModal, setPaymentCalcModal] = useState({ 
                 show: false, sellerId: '', baseSalary: 0,
-                startDate: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0], 
-                endDate: new Date().toISOString().split('T')[0]
+                startDate: '', 
+                endDate: ''
             });
 
+            // --- REFS ---
             const fileInputRef = useRef(null);
             const photoInputRef = useRef(null);
             const [targetIdForPhoto, setTargetIdForPhoto] = useState(null);
-            const statusTimeoutRef = useRef(null);
 
-            useEffect(() => {
-                if (window.lucide) window.lucide.createIcons();
-            }, [view]);
+            // --- CONFIGURACIÓN DE TEMA ---
+            const themeColors = useMemo(() => ({
+                indigo: { bg: 'bg-indigo-50', text: 'text-indigo-500', border: 'border-indigo-100', btn: 'bg-indigo-500 hover:bg-indigo-600', ring: 'ring-indigo-200', headerText: 'text-indigo-700', dot: 'bg-indigo-500' },
+                emerald: { bg: 'bg-emerald-50', text: 'text-emerald-500', border: 'border-emerald-100', btn: 'bg-emerald-500 hover:bg-emerald-600', ring: 'ring-emerald-200', headerText: 'text-emerald-700', dot: 'bg-emerald-500' },
+                rose: { bg: 'bg-rose-50', text: 'text-rose-500', border: 'border-rose-100', btn: 'bg-rose-500 hover:bg-rose-600', ring: 'ring-rose-200', headerText: 'text-rose-700', dot: 'bg-rose-500' },
+                amber: { bg: 'bg-amber-50', text: 'text-amber-500', border: 'border-amber-100', btn: 'bg-amber-500 hover:bg-amber-600', ring: 'ring-amber-200', headerText: 'text-amber-700', dot: 'bg-amber-500' },
+                slate: { bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-100', btn: 'bg-slate-500 hover:bg-slate-600', ring: 'ring-slate-200', headerText: 'text-slate-700', dot: 'bg-slate-500' },
+            }), []);
 
-            useEffect(() => {
-                const loadData = async () => {
-                    const localData = localStorage.getItem('vendas_app_data');
-                    if (localData) {
-                        const parsed = JSON.parse(localData);
-                        applyData(parsed);
-                    } else {
-                        setSellers([{ id: '1', name: 'Vendedor 1', active: true, order: 0 }, { id: '2', name: 'Vendedor 2', active: true, order: 1 }]);
-                        setBranches([{ id: '1', name: 'Central', active: true, order: 0 }]);
-                        setTerminals([{ id: '1', name: 'Terminal A', active: true, order: 0 }]);
-                    }
+            const getThemeClass = (part) => themeColors[theme] ? themeColors[theme][part] : themeColors.indigo[part];
+            const themeClass = getThemeClass('text');
+            const morningFieldBg = isDarkMode ? 'bg-yellow-400/20 border-yellow-500/30' : 'bg-yellow-50 border-yellow-100';
+            const afternoonFieldBg = isDarkMode ? 'bg-blue-400/20 border-blue-500/30' : 'bg-blue-50 border-blue-100';
 
-                    if (supabase) {
-                        try {
-                            const { data, error } = await supabase
-                                .from('app_data')
-                                .select('content')
-                                .order('created_at', { ascending: false })
-                                .limit(1)
-                                .single();
-                            
-                            if (data && data.content) {
-                                applyData(data.content);
-                                localStorage.setItem('vendas_app_data', JSON.stringify(data.content));
-                            }
-                        } catch (e) { console.error("Error cargando de Supabase:", e); }
-                    }
-                };
-                loadData();
-            }, []);
-
+            // --- UTILITIES DE ESTADO ---
             const applyData = (p) => {
                 if (p.sellers) setSellers(p.sellers); 
                 if (p.branches) setBranches(p.branches); 
@@ -218,162 +210,9 @@
                 }
             };
 
-            const persistData = async () => {
-                if (sellers.length === 0) return;
-                if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
-                setSaveStatus('loading');
-                const dataToSave = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
-                localStorage.setItem('vendas_app_data', JSON.stringify(dataToSave));
-                if (supabase) {
-                    try {
-                        const { error } = await supabase.from('app_data').insert([{ content: dataToSave }]);
-                        if (error) { console.error("Error de Supabase:", error.message); setSaveStatus('error'); }
-                        else { setSaveStatus('success'); }
-                    } catch (e) { console.error("Falla en el sistema:", e?.message || "Error desconocido"); setSaveStatus('error'); }
-                } else { setSaveStatus('success'); }
-                statusTimeoutRef.current = setTimeout(() => { setSaveStatus('idle'); }, 4000);
-            };
-
-            useEffect(() => {
-                if (sellers.length === 0) return;
-                const timer = setTimeout(() => { persistData(); }, 1500); 
-                return () => clearTimeout(timer);
-            }, [sales, payments, branchClosures, terminalEntries, extraExpenses, sellers, branches, terminals, theme, isDarkMode]);
-
-            const exportBackup = () => {
-                const data = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const link = document.createElement("a"); 
-                link.href = URL.createObjectURL(blob); 
-                link.download = `respaldo_triangulo_${selectedDate}.json`; 
-                link.click();
-            };
-
-            const importBackup = (e) => {
-                const file = e.target.files[0]; 
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    try {
-                        const p = JSON.parse(ev.target.result);
-                        applyData(p);
-                        alert('Respaldo cargado correctamente.');
-                    } catch (err) { alert('Error: Formato de archivo inválido.'); }
-                };
-                reader.readAsText(file);
-            };
-
-            const themeColors = {
-                indigo: { bg: 'bg-indigo-50', text: 'text-indigo-500', border: 'border-indigo-100', btn: 'bg-indigo-500 hover:bg-indigo-600', ring: 'ring-indigo-200', headerText: 'text-indigo-700', dot: 'bg-indigo-500' },
-                emerald: { bg: 'bg-emerald-50', text: 'text-emerald-500', border: 'border-emerald-100', btn: 'bg-emerald-500 hover:bg-emerald-600', ring: 'ring-emerald-200', headerText: 'text-emerald-700', dot: 'bg-emerald-500' },
-                rose: { bg: 'bg-rose-50', text: 'text-rose-500', border: 'border-rose-100', btn: 'bg-rose-500 hover:bg-rose-600', ring: 'ring-rose-200', headerText: 'text-rose-700', dot: 'bg-rose-500' },
-                amber: { bg: 'bg-amber-50', text: 'text-amber-500', border: 'border-amber-100', btn: 'bg-amber-500 hover:bg-amber-600', ring: 'ring-amber-200', headerText: 'text-amber-700', dot: 'bg-amber-500' },
-                slate: { bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-100', btn: 'bg-slate-500 hover:bg-slate-600', ring: 'ring-slate-200', headerText: 'text-slate-700', dot: 'bg-slate-500' },
-            };
-
-            const getThemeClass = (part) => themeColors[theme][part];
-            const cardBg = isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100';
-            const inputBg = isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-700';
-            const morningFieldBg = isDarkMode ? 'bg-yellow-400/20 border-yellow-500/30' : 'bg-yellow-50 border-yellow-100';
-            const afternoonFieldBg = isDarkMode ? 'bg-blue-400/20 border-blue-500/30' : 'bg-blue-50 border-blue-100';
-
-            const formatCurrency = (val) => {
-                const n = Math.round(val);
-                return n.toLocaleString('en-US');
-            };
-
             const activeSellers = useMemo(() => sellers.filter(s => s.active).sort((a,b) => a.order - b.order), [sellers]);
             const activeBranches = useMemo(() => branches.filter(b => b.active).sort((a,b) => a.order - b.order), [branches]);
             const activeTerminals = useMemo(() => terminals.filter(t => t.active).sort((a,b) => a.order - b.order), [terminals]);
-
-            const sortedSellersForSales = useMemo(() => {
-                const shift = (view === 'morning' || view === 'afternoon') ? view : null;
-                if (!shift) return activeSellers;
-                return [...activeSellers].sort((a, b) => {
-                    const entryA = sales.find(s => s.date === selectedDate && s.sellerId === a.id && s.shift === shift);
-                    const entryB = sales.find(s => s.date === selectedDate && s.sellerId === b.id && s.shift === shift);
-                    
-                    const valA = entryA !== undefined ? entryA.amount : -1;
-                    const valB = entryB !== undefined ? entryB.amount : -1;
-                    
-                    if (valA !== -1 && valB !== -1) return valB - valA;
-                    if (valA !== -1) return -1;
-                    if (valB !== -1) return 1;
-                    return a.order - b.order;
-                });
-            }, [activeSellers, sales, selectedDate, view]);
-
-            const getSaleAmount = (sellerId, shift) => sales.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift)?.amount;
-            const getSaleEntry = (sellerId, shift) => sales.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
-            const getPaymentAmount = (sellerId, shift) => payments.find(p => p.date === selectedDate && p.sellerId === sellerId && p.shift === shift)?.amount || 0;
-            const getBranchClosure = (branchId) => branchClosures.find(b => b.date === selectedDate && b.branchId === branchId) || { morningAmount: 0, afternoonAmount: 0 };
-            const getTerminalAmount = (terminalId, shift) => terminalEntries.find(t => t.date === selectedDate && t.terminalId === terminalId && t.shift === shift)?.amount || 0;
-            const getExtraExpenseAmount = (type, shift) => extraExpenses.find(e => e.date === selectedDate && e.type === type && e.shift === shift)?.amount || 0;
-
-            const handleSaleChange = (sellerId, shift, value) => {
-                const amount = value === "" ? undefined : (parseFloat(value) || 0);
-                setSaveStatus('loading');
-                setSales(prev => {
-                    const existing = prev.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
-                    const filtered = prev.filter(s => !(s.date === selectedDate && s.sellerId === sellerId && s.shift === shift));
-                    if (amount === undefined) return filtered;
-                    
-                    let entry = { ...existing, date: selectedDate, sellerId, amount, shift };
-                    if (entry.commissionType && ['10', '20', '25'].includes(entry.commissionType)) {
-                        entry.commission = amount * (parseFloat(entry.commissionType) / 100);
-                    }
-                    return [...filtered, entry];
-                });
-            };
-
-            const handlePaymentChange = (sellerId, shift, value) => {
-                const amount = parseFloat(value) || 0;
-                setSaveStatus('loading');
-                setPayments(prev => [...prev.filter(p => !(p.date === selectedDate && p.sellerId === sellerId && p.shift === shift)), { date: selectedDate, sellerId, amount, shift, calculated: false }]);
-            };
-
-            const handleBranchClosureChange = (branchId, field, value) => {
-                const amount = parseFloat(value) || 0;
-                setSaveStatus('loading');
-                setBranchClosures(prev => {
-                    const existing = prev.find(b => b.date === selectedDate && b.branchId === branchId);
-                    const filtered = prev.filter(b => !(b.date === selectedDate && b.branchId === branchId));
-                    return [...filtered, existing ? { ...existing, [field]: amount } : { date: selectedDate, branchId, morningAmount: 0, afternoonAmount: 0, [field]: amount }];
-                });
-            };
-
-            const handleTerminalChange = (terminalId, shift, value) => {
-                const amount = parseFloat(value) || 0;
-                setSaveStatus('loading');
-                setTerminalEntries(prev => [...prev.filter(t => !(t.date === selectedDate && t.terminalId === terminalId && t.shift === shift)), { date: selectedDate, terminalId, amount, shift }]);
-            };
-
-            const handleExtraExpenseChange = (type, shift, value) => {
-                const amount = parseFloat(value) || 0;
-                setSaveStatus('loading');
-                setExtraExpenses(prev => {
-                    const dayEntries = prev.filter(e => e.date === selectedDate && e.type === type);
-                    const desc = dayEntries.length > 0 ? dayEntries[0].description : (type === 'gasto' ? 'Gasto' : 'Garantía');
-                    return [...prev.filter(e => !(e.date === selectedDate && e.type === type && e.shift === shift)), { date: selectedDate, type, amount, description: desc, shift }];
-                });
-            };
-
-            const openConceptModal = (type) => {
-                const dayEntries = extraExpenses.filter(e => e.date === selectedDate && e.type === type);
-                setConceptModal({ show: true, type, tempDescription: dayEntries.length > 0 ? dayEntries[0].description : '' });
-            };
-
-            const saveConcept = () => {
-                const { type, tempDescription } = conceptModal;
-                const conceptToSave = tempDescription || (type === 'gasto' ? 'Gasto' : 'Garantía');
-                setSaveStatus('loading');
-                setExtraExpenses(prev => {
-                    const dayEntries = prev.filter(e => e.date === selectedDate && e.type === type);
-                    if (dayEntries.length > 0) return prev.map(e => (e.date === selectedDate && e.type === type) ? { ...e, description: conceptToSave } : e);
-                    return [...prev, { date: selectedDate, type, amount: 0, description: conceptToSave, shift: 'morning' }, { date: selectedDate, type, amount: 0, description: conceptToSave, shift: 'afternoon' }];
-                });
-                setConceptModal(prev => ({ ...prev, show: false }));
-            };
 
             const summaryData = useMemo(() => {
                 const daySales = sales.filter(s => s.date === selectedDate);
@@ -388,7 +227,10 @@
                 });
                 
                 const totalGross = detailByBranch.reduce((acc, b) => acc + b.total, 0);
-                const totalPayments = dayPayments.reduce((acc, p) => acc + p.amount, 0);
+                const morningPaymentsTotal = dayPayments.filter(p => p.shift === 'morning').reduce((acc, p) => acc + p.amount, 0);
+                const afternoonPaymentsTotal = dayPayments.filter(p => p.shift === 'afternoon').reduce((acc, p) => acc + p.amount, 0);
+                const totalPayments = morningPaymentsTotal + afternoonPaymentsTotal;
+                
                 const totalGastos = dayExtras.filter(e => e.type === 'gasto').reduce((acc, e) => acc + e.amount, 0);
                 const totalGarantias = dayExtras.filter(e => e.type === 'garantia').reduce((acc, e) => acc + e.amount, 0);
                 const totalDeductions = totalPayments + totalGastos + totalGarantias;
@@ -396,19 +238,12 @@
                 const totalTerminals = dayTerminals.reduce((acc, t) => acc + t.amount, 0);
                 const totalCash = totalDay - totalTerminals;
 
-                const morningSalesTotal = daySales.filter(s => s.shift === 'morning').reduce((acc, s) => acc + s.amount, 0);
-                const afternoonSalesTotal = daySales.filter(s => s.shift === 'afternoon').reduce((acc, s) => acc + s.amount, 0);
-
-                const morningPaymentsTotal = dayPayments.filter(p => p.shift === 'morning').reduce((acc, p) => acc + p.amount, 0);
-                const afternoonPaymentsTotal = dayPayments.filter(p => p.shift === 'afternoon').reduce((acc, p) => acc + p.amount, 0);
-
-                // Cálculos de efectivo por turno
-                const morningBranchCash = dayClosures.reduce((acc, b) => acc + b.morningAmount, 0);
+                const morningBranchCash = dayClosures.reduce((acc, b) => acc + (b.morningAmount || 0), 0);
                 const morningExtras = dayExtras.filter(e => e.shift === 'morning').reduce((acc, e) => acc + e.amount, 0);
                 const morningTerminals = dayTerminals.filter(t => t.shift === 'morning').reduce((acc, t) => acc + t.amount, 0);
                 const morningCashFinal = morningBranchCash - morningPaymentsTotal - morningExtras - morningTerminals;
 
-                const afternoonBranchCash = dayClosures.reduce((acc, b) => acc + b.afternoonAmount, 0);
+                const afternoonBranchCash = dayClosures.reduce((acc, b) => acc + (b.afternoonAmount || 0), 0);
                 const afternoonExtras = dayExtras.filter(e => e.shift === 'afternoon').reduce((acc, e) => acc + e.amount, 0);
                 const afternoonTerminals = dayTerminals.filter(t => t.shift === 'afternoon').reduce((acc, t) => acc + t.amount, 0);
                 const afternoonCashFinal = afternoonBranchCash - afternoonPaymentsTotal - afternoonExtras - afternoonTerminals;
@@ -419,76 +254,159 @@
                     acc[key].amount += e.amount;
                     return acc;
                 }, {});
-                
-                const paymentsBySeller = Object.values(dayPayments.reduce((acc, p) => {
-                    const seller = sellers.find(s => s.id === p.sellerId);
-                    if (!acc[p.sellerId]) acc[p.sellerId] = { name: seller ? seller.name : 'Desconocido', amount: 0 };
-                    acc[p.sellerId].amount += p.amount;
-                    return acc;
-                }, {})).filter(p => p.amount > 0);
 
                 return { 
-                    date: selectedDate, detailByBranch, paymentsBySeller, totalGross, totalPayments, totalGastos, 
-                    totalGarantias, totalDeductions, totalDay, totalTerminals, totalCash, groupedExtras,
-                    morningCashFinal, afternoonCashFinal, morningSalesTotal, afternoonSalesTotal,
-                    morningPaymentsTotal, afternoonPaymentsTotal
+                    date: selectedDate, detailByBranch, totalGross, totalPayments, totalGastos, totalGarantias,
+                    totalDeductions, totalDay, totalTerminals, totalCash, groupedExtras,
+                    morningCashFinal, afternoonCashFinal, morningPaymentsTotal, afternoonPaymentsTotal,
+                    morningSalesTotal: daySales.filter(s => s.shift === 'morning').reduce((acc, s) => acc + s.amount, 0),
+                    afternoonSalesTotal: daySales.filter(s => s.shift === 'afternoon').reduce((acc, s) => acc + s.amount, 0),
+                    paymentsBySeller: Object.values(dayPayments.reduce((acc, p) => {
+                        const seller = sellers.find(s => s.id === p.sellerId);
+                        if (!acc[p.sellerId]) acc[p.sellerId] = { name: seller?.name || 'Desconocido', amount: 0 };
+                        acc[p.sellerId].amount += p.amount;
+                        return acc;
+                    }, {})).filter(p => p.amount > 0)
                 };
             }, [selectedDate, sales, branchClosures, payments, terminalEntries, extraExpenses, activeBranches, sellers]);
 
-            const getFormattedDateLong = (dateStr) => {
-                const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-                const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-                const d = new Date(dateStr + 'T12:00:00');
-                const dayName = days[d.getDay()];
-                const dayNum = d.getDate();
-                const monthName = months[d.getMonth()];
-                const year = d.getFullYear();
-                return `${dayName} ${dayNum} de ${monthName} de ${year}`;
+            // --- CALCULOS ---
+            const calculateComs = (id, s, e) => sales.filter(sa => sa.sellerId === id && sa.date >= s && sa.date <= e).reduce((acc, curr) => acc + (curr.commission || 0), 0);
+            const calculatePrevPmts = (id, s, e) => payments.filter(p => p.sellerId === id && p.date >= s && p.date <= e && p.amount > 0).reduce((acc, curr) => acc + curr.amount, 0);
+
+            const getCommissionsBreakdown = (id, s, e) => {
+                const grouped = sales.filter(sa => sa.sellerId === id && sa.date >= s && sa.date <= e && (sa.commission || 0) > 0)
+                    .reduce((acc, curr) => {
+                        if (!acc[curr.date]) acc[curr.date] = { morning: 0, afternoon: 0 };
+                        acc[curr.date][curr.shift] += curr.commission; return acc;
+                    }, {});
+                return Object.entries(grouped).sort((a,b) => a[0].localeCompare(b[0]));
             };
 
-            const copySummaryText = () => {
-                const s = summaryData;
-                let text = `${getFormattedDateLong(s.date)}\n\n`;
-                
-                s.detailByBranch.forEach(b => {
-                    text += `- ${b.name}: $${formatCurrency(b.total)}\n`;
+            const getPaymentsBreakdown = (id, s, e) => {
+                const grouped = payments.filter(p => p.sellerId === id && p.date >= s && p.date <= e && p.amount > 0)
+                    .reduce((acc, curr) => {
+                        if (!acc[curr.date]) acc[curr.date] = { morning: 0, afternoon: 0 };
+                        acc[curr.date][curr.shift] += curr.amount; return acc;
+                    }, {});
+                return Object.entries(grouped).sort((a,b) => a[0].localeCompare(b[0]));
+            };
+
+            const getSaleAmountLocal = (sellerId, shift) => sales.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift)?.amount;
+            const getPaymentAmountLocal = (sellerId, shift) => payments.find(p => p.date === selectedDate && p.sellerId === sellerId && p.shift === shift)?.amount || 0;
+            const getBranchClosureLocal = (branchId) => branchClosures.find(b => b.date === selectedDate && b.branchId === branchId) || { morningAmount: 0, afternoonAmount: 0 };
+            const getTerminalAmountLocal = (terminalId, shift) => terminalEntries.find(t => t.date === selectedDate && t.terminalId === terminalId && t.shift === shift)?.amount || 0;
+            const getExtraExpenseAmountLocal = (type, shift) => extraExpenses.find(e => e.date === selectedDate && e.type === type && e.shift === shift)?.amount || 0;
+
+            const sortedSellersLocal = useMemo(() => {
+                const shift = (view === 'morning' || view === 'afternoon') ? view : null;
+                if (!shift) return activeSellers;
+                return [...activeSellers].sort((a, b) => {
+                    const entryA = sales.find(s => s.date === selectedDate && s.sellerId === a.id && s.shift === shift);
+                    const entryB = sales.find(s => s.date === selectedDate && s.sellerId === b.id && s.shift === shift);
+                    const valA = entryA !== undefined ? entryA.amount : -1;
+                    const valB = entryB !== undefined ? entryB.amount : -1;
+                    if (valA !== -1 && valB !== -1) return valB - valA;
+                    if (valA !== -1) return -1;
+                    if (valB !== -1) return 1;
+                    return a.order - b.order;
                 });
-                text += `TOTAL VENTAS: $${formatCurrency(s.totalGross)}\n\n`;
-                
-                text += `GASTOS\n`;
-                s.paymentsBySeller.forEach(p => {
-                    text += `- Pago ${p.name}: $${formatCurrency(p.amount)}\n`;
-                });
-                
-                Object.entries(s.groupedExtras).forEach(([k, d]) => {
-                    if (d.amount > 0) {
-                        text += `- ${k}: $${formatCurrency(d.amount)}\n`;
+            }, [activeSellers, sales, selectedDate, view]);
+
+            // --- SUPABASE & DATA SYNC ---
+            const SUPABASE_URL = 'https://gpkiboiatmshvwmwdnqx.supabase.co'; 
+            const SUPABASE_KEY = 'sb_publishable_hyl_Srp08L9DdwCBG7Fd-g_QX9qRUfU';
+            const supabaseClient = (typeof window.supabase !== 'undefined') ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+            useEffect(() => {
+                const loadData = async () => {
+                    const localData = localStorage.getItem('vendas_app_data');
+                    if (localData) applyData(JSON.parse(localData));
+                    else {
+                        setSellers([{ id: '1', name: 'Vendedor 1', active: true, order: 0 }]);
+                        setBranches([{ id: '1', name: 'Central', active: true, order: 0 }]);
+                        setTerminals([{ id: '1', name: 'Terminal A', active: true, order: 0 }]);
                     }
-                });
-                text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n`;
-                
-                text += `*TOTAL DÍA: $${formatCurrency(s.totalDay)}*\n`;
-                text += `TOTAL TERMINALES: $${formatCurrency(s.totalTerminals)}\n`;
-                text += `TOTAL EFECTIVO: $${formatCurrency(s.totalCash)}`;
-                
-                navigator.clipboard.writeText(text);
-                alert('Resumen detallado copiado');
+                    if (supabaseClient) {
+                        try {
+                            const { data } = await supabaseClient.from('app_data').select('content').order('created_at', { ascending: false }).limit(1).single();
+                            if (data?.content) {
+                                applyData(data.content);
+                                localStorage.setItem('vendas_app_data', JSON.stringify(data.content));
+                            }
+                        } catch (e) { console.error(e); }
+                    }
+                };
+                loadData();
+            }, []);
+
+            const persistData = async () => {
+                if (sellers.length === 0) return;
+                setSaveStatus('loading');
+                const dataToSave = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
+                localStorage.setItem('vendas_app_data', JSON.stringify(dataToSave));
+                if (supabaseClient) {
+                    try {
+                        const { error } = await supabaseClient.from('app_data').insert([{ content: dataToSave }]);
+                        setSaveStatus(error ? 'error' : 'success');
+                    } catch (e) { setSaveStatus('error'); }
+                } else setSaveStatus('success');
+                setTimeout(() => setSaveStatus('idle'), 3000);
             };
 
-            const getDayOfWeek = (dateStr) => {
-                const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-                const d = new Date(dateStr + 'T12:00:00');
-                return days[d.getDay()];
+            useEffect(() => {
+                const timer = setTimeout(() => { if(sellers.length > 0) persistData(); }, 1500);
+                return () => clearTimeout(timer);
+            }, [sales, payments, branchClosures, terminalEntries, extraExpenses, sellers, branches, terminals, theme, isDarkMode]);
+
+            // --- HANDLERS ---
+            const handleSaleChange = (sellerId, shift, value) => {
+                const amount = value === "" ? undefined : (parseFloat(value) || 0);
+                setSales(prev => {
+                    const filtered = prev.filter(s => !(s.date === selectedDate && s.sellerId === sellerId && s.shift === shift));
+                    if (amount === undefined) return filtered;
+                    const existing = prev.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
+                    let entry = { ...existing, date: selectedDate, sellerId, amount, shift };
+                    if (entry.commissionType && ['10', '20', '25'].includes(entry.commissionType)) entry.commission = amount * (parseFloat(entry.commissionType) / 100);
+                    return [...filtered, entry];
+                });
+            };
+
+            const handlePaymentChange = (sellerId, shift, value) => {
+                const amount = parseFloat(value) || 0;
+                setPayments(prev => [...prev.filter(p => !(p.date === selectedDate && p.sellerId === sellerId && p.shift === shift)), { date: selectedDate, sellerId, amount, shift, calculated: false }]);
+            };
+
+            const handleBranchClosureChange = (branchId, field, value) => {
+                const amount = parseFloat(value) || 0;
+                setBranchClosures(prev => {
+                    const existing = prev.find(b => b.date === selectedDate && b.branchId === branchId);
+                    const filtered = prev.filter(b => !(b.date === selectedDate && b.branchId === branchId));
+                    return [...filtered, existing ? { ...existing, [field]: amount } : { date: selectedDate, branchId, morningAmount: 0, afternoonAmount: 0, [field]: amount }];
+                });
+            };
+
+            const handleTerminalChange = (terminalId, shift, value) => {
+                const amount = parseFloat(value) || 0;
+                setTerminalEntries(prev => [...prev.filter(t => !(t.date === selectedDate && t.terminalId === terminalId && t.shift === shift)), { date: selectedDate, terminalId, amount, shift }]);
+            };
+
+            const handleExtraExpenseChange = (type, shift, value) => {
+                const amount = parseFloat(value) || 0;
+                setExtraExpenses(prev => {
+                    const dayEntries = prev.filter(e => e.date === selectedDate && e.type === type);
+                    const desc = dayEntries.length > 0 ? dayEntries[0].description : (type === 'gasto' ? 'Gasto' : 'Garantía');
+                    return [...prev.filter(e => !(e.date === selectedDate && e.type === type && e.shift === shift)), { date: selectedDate, type, amount, description: desc, shift }];
+                });
             };
 
             const openCommissionModal = (sellerId, shift) => {
-                const entry = getSaleEntry(sellerId, shift);
+                const entry = sales.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
                 setCommissionModal({ show: true, sellerId, shift, tempType: entry?.commissionType || 'none', tempM20: entry?.mixto20 || 0, tempM25: entry?.mixto25 || 0 });
             };
 
             const saveCommission = () => {
                 const { sellerId, shift, tempType, tempM20, tempM25 } = commissionModal;
-                setSaveStatus('loading');
                 setSales(prev => {
                     const existing = prev.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
                     const filtered = prev.filter(s => !(s.date === selectedDate && s.sellerId === sellerId && s.shift === shift));
@@ -500,84 +418,91 @@
                     else if (tempType === 'mixto') { commission = (tempM20 * 0.20) + (tempM25 * 0.25); amount = tempM20 + tempM25; }
                     return [...filtered, { date: selectedDate, sellerId, amount, shift, commissionType: tempType, commission: tempType === 'none' ? undefined : commission, mixto20: tempType === 'mixto' ? tempM20 : undefined, mixto25: tempType === 'mixto' ? tempM25 : undefined }];
                 });
-                setCommissionModal(prev => ({ ...prev, show: false }));
+                setCommissionModal(pv => ({ ...pv, show: false }));
             };
 
-            const VisualPreview = ({ source, size = "12", hasCalculated = false, onClick }) => {
-                const borderClass = hasCalculated ? 'ring-4 ring-emerald-500 ring-offset-2' : '';
-                const bg = isDarkMode ? 'bg-gray-700' : 'bg-white';
-                if (!source) return <div onClick={onClick} className={`w-${size} h-${size} rounded-xl ${bg} border border-gray-200 flex items-center justify-center text-gray-300 shadow-inner cursor-pointer transition-all ${borderClass}`}><LucideIcon name="camera" size={20} /></div>;
-                return <img src={source} onClick={onClick} className={`w-${size} h-${size} rounded-xl object-cover border-2 border-white shadow-sm cursor-pointer transition-all ${borderClass}`} alt="P" />;
+            const saveConcept = () => {
+                const { type, tempDescription } = conceptModal;
+                const conceptToSave = tempDescription || (type === 'gasto' ? 'Gasto' : 'Garantía');
+                setExtraExpenses(prev => prev.map(e => (e.date === selectedDate && e.type === type) ? { ...e, description: conceptToSave } : e));
+                setConceptModal(pv => ({ ...pv, show: false }));
             };
 
-            const calculateComs = (id, s, e) => sales.filter(sa => sa.sellerId === id && sa.date >= s && sa.date <= e).reduce((acc, curr) => acc + (curr.commission || 0), 0);
-            const calculatePrevPmts = (id, s, e) => payments.filter(p => p.sellerId === id && p.date >= s && p.date <= e && p.amount > 0).reduce((acc, curr) => acc + curr.amount, 0);
+            const copySummaryText = () => {
+                const s = summaryData; let text = `${getFormattedDateLong(s.date)}\n\n`;
+                s.detailByBranch.forEach(b => { text += `- ${b.name}: $${formatCurrency(b.total)}\n`; });
+                text += `TOTAL VENTAS: $${formatCurrency(s.totalGross)}\n\nDEDUCCIONES\n`;
+                s.paymentsBySeller.forEach(p => { text += `- Pago ${p.name}: $${formatCurrency(p.amount)}\n`; });
+                Object.entries(s.groupedExtras).forEach(([k, d]) => { if (d.amount > 0) text += `- ${k}: $${formatCurrency(d.amount)}\n`; });
+                text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n*TOTAL DÍA: $${formatCurrency(s.totalDay)}*\nTOTAL TERMINALES: $${formatCurrency(s.totalTerminals)}\nTOTAL EFECTIVO: $${formatCurrency(s.totalCash)}`;
+                navigator.clipboard.writeText(text); alert('Resumen copiado');
+            };
+
+            const exportBackup = () => {
+                const data = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `respaldo_triangulo_${selectedDate}.json`; link.click();
+            };
+
+            const importBackup = (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try { const p = JSON.parse(ev.target.result); applyData(p); alert('Respaldo cargado correctamente.'); } catch (err) { alert('Error: Formato inválido.'); }
+                }; reader.readAsText(file);
+            };
+
+            // --- RENDER HELPERS ---
+            const cardBgClass = isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100';
+            const inputBgClass = isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-700';
 
             return (
                 <div className={`min-h-screen pb-24 ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} flex flex-col transition-colors duration-500`}>
                     <header className={`${getThemeClass('bg')} ${getThemeClass('headerText')} p-4 shadow-sm sticky top-0 z-50 flex justify-between items-center transition-colors duration-300`}>
                         <div className="flex items-center gap-3">
-                            <div onClick={persistData} className={`w-8 h-8 bg-white/60 rounded-lg flex items-center justify-center shadow-sm cursor-pointer transition-all active:scale-90 relative`}>
-                                <LucideIcon name="triangle" size={20} fill="currentColor" 
-                                    className={
-                                        saveStatus === 'success' ? 'triangle-success text-lime-400' : 
-                                        saveStatus === 'error' ? 'triangle-error text-red-500' : 
-                                        saveStatus === 'loading' ? 'triangle-loading text-indigo-400' : getThemeClass('text')
-                                    } 
-                                />
+                            <div onClick={persistData} className="flex items-center justify-center cursor-pointer active:scale-90 relative transition-all duration-300">
+                                <svg viewBox="0 0 24 24" className={`w-8 h-8 triangle-base ${saveStatus === 'success' ? 'triangle-flash-success' : saveStatus === 'error' ? 'triangle-flash-error' : saveStatus === 'loading' ? 'triangle-growing' : ''} ${saveStatus === 'idle' ? themeClass : ''}`} fill="currentColor">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                </svg>
                             </div>
                             <h1 className="text-xl font-black tracking-tighter select-none">TRIANGULO APP</h1>
                         </div>
-                        <button onClick={() => setView(view === 'settings' ? 'morning' : 'settings')} className={`p-2 rounded-full transition-all ${view === 'settings' ? 'bg-white ' + getThemeClass('text') : 'bg-white/40'}`}>
+                        <button onClick={() => setView(view === 'settings' ? 'morning' : 'settings')} className={`p-2 rounded-full transition-all ${view === 'settings' ? 'bg-white ' + themeClass : 'bg-white/40'}`}>
                             {view === 'settings' ? <LucideIcon name="x" size={22} /> : <LucideIcon name="settings" size={22} />}
                         </button>
                     </header>
 
-                    <div className={`${cardBg} border-b p-2 flex items-center justify-between sticky top-[64px] z-40 transition-colors`}>
-                        <button onClick={() => {
-                             const current = new Date(selectedDate + 'T12:00:00'); current.setDate(current.getDate() - 1); setSelectedDate(current.toISOString().split('T')[0]);
-                        }} className={`p-2 ${getThemeClass('text')}`}><LucideIcon name="chevron-left" size={24} /></button>
+                    <div className={`${cardBgClass} border-b p-2 flex items-center justify-between sticky top-[64px] z-40 transition-colors`}>
+                        <button onClick={() => { const d = new Date(selectedDate + 'T12:00:00'); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]); }} className={`p-2 ${themeClass}`}><LucideIcon name="chevron-left" size={24} /></button>
                         <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} px-4 py-2 rounded-xl border flex flex-col items-center gap-0 shadow-sm`}>
                             <span className="text-[10px] font-black uppercase opacity-60">{getDayOfWeek(selectedDate)}</span>
                             <div className="flex items-center gap-2">
-                                <LucideIcon name="calendar" size={14} className={getThemeClass('text')} />
+                                <LucideIcon name="calendar" size={14} className="text-sky-400" />
                                 <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-sm font-black focus:outline-none border-none cursor-pointer" />
                             </div>
                         </div>
-                        <button onClick={() => {
-                             const current = new Date(selectedDate + 'T12:00:00'); current.setDate(current.getDate() + 1); setSelectedDate(current.toISOString().split('T')[0]);
-                        }} className={`p-2 ${getThemeClass('text')}`}><LucideIcon name="chevron-right" size={24} /></button>
+                        <button onClick={() => { const d = new Date(selectedDate + 'T12:00:00'); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]); }} className={`p-2 ${themeClass}`}><LucideIcon name="chevron-right" size={24} /></button>
                     </div>
 
                     <main className="flex-1 p-4 max-w-lg mx-auto w-full">
                         {(view === 'morning' || view === 'afternoon') && (
-                            <div className={`${cardBg} p-4 rounded-2xl shadow-sm border animate-in`}>
+                            <div className={`${cardBgClass} p-4 rounded-2xl shadow-sm border animate-in`}>
                                 <div className="flex justify-between items-center mb-4 border-b pb-2">
                                     <h2 className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Ventas {view === 'morning' ? 'Mañana' : 'Tarde'}</h2>
-                                    <span className={`text-[11px] font-black ${getThemeClass('text')} bg-white px-2 py-0.5 rounded-full shadow-sm`}>
-                                        TOTAL: ${formatCurrency(view === 'morning' ? summaryData.morningSalesTotal : summaryData.afternoonSalesTotal)}
-                                    </span>
+                                    <span className={`text-[11px] font-black ${themeClass} bg-white px-2 py-0.5 rounded-full shadow-sm`}>TOTAL: ${formatCurrency(view === 'morning' ? summaryData.morningSalesTotal : summaryData.afternoonSalesTotal)}</span>
                                 </div>
                                 <div className="space-y-3">
-                                    {sortedSellersForSales.map(seller => {
-                                        const entry = getSaleEntry(seller.id, view);
-                                        const currentVal = getSaleAmount(seller.id, view);
+                                    {sortedSellersLocal.map(seller => {
+                                        const entry = sales.find(s => s.date === selectedDate && s.sellerId === seller.id && s.shift === view); 
+                                        const val = entry?.amount;
                                         return (
                                             <div key={seller.id} className={`flex items-center justify-between gap-4 p-2 ${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-xl border ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
                                                 <div className="flex items-center gap-3">
-                                                    <VisualPreview source={seller.image} size="10" hasCalculated={entry?.commissionType && entry.commissionType !== 'none'} onClick={() => openCommissionModal(seller.id, view)} />
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-sm">{seller.name}</span>
-                                                        {entry?.commissionType && entry.commissionType !== 'none' && <span className="text-[10px] font-black text-emerald-500 uppercase">Com: ${formatCurrency(entry.commission)}</span>}
-                                                    </div>
+                                                    <VisualPreview source={seller.image} size="10" hasCalculated={entry?.commissionType && entry.commissionType !== 'none'} onClick={() => openCommissionModal(seller.id, view)} isDarkMode={isDarkMode} />
+                                                    <div className="flex flex-col"><span className="font-bold text-sm">{seller.name}</span>{entry?.commissionType && entry.commissionType !== 'none' && <span className="text-[10px] font-black text-emerald-500 uppercase">Com: ${formatCurrency(entry.commission)}</span>}</div>
                                                 </div>
-                                                <div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 ${getThemeClass('text')} font-bold opacity-60`}>$</span>
-                                                    <input 
-                                                        type="number" 
-                                                        value={currentVal === undefined ? '' : currentVal} 
-                                                        onChange={(e) => handleSaleChange(seller.id, view, e.target.value)} 
-                                                        className={`w-28 pl-7 pr-3 py-2 ${inputBg} rounded-lg text-right font-black shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')}`} 
-                                                    />
+                                                <div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 ${themeClass} font-bold opacity-60`}>$</span>
+                                                    <input type="number" value={val === undefined ? '' : val} onChange={(e) => handleSaleChange(seller.id, view, e.target.value)} className={`w-28 pl-7 pr-3 py-2 ${inputBgClass} rounded-lg text-right font-black shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')}`} />
                                                 </div>
                                             </div>
                                         );
@@ -588,147 +513,102 @@
 
                         {view === 'payments' && (
                             <div className="space-y-4 animate-in">
-                                <div className={`${cardBg} p-4 rounded-2xl shadow-sm border`}>
+                                <div className={`${cardBgClass} p-4 rounded-2xl shadow-sm border`}>
                                     <h2 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2">Pagos a Vendedores</h2>
                                     <div className="space-y-4">
                                         {activeSellers.map(seller => (
                                             <div key={seller.id} className={`p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-800' : 'bg-gray-50/50 border-gray-50'}`}>
                                                 <div className="flex items-center gap-3 mb-3">
-                                                    <VisualPreview source={seller.image} size="10" hasCalculated={payments.some(p => p.date === selectedDate && p.sellerId === seller.id && p.calculated)} onClick={() => setPaymentCalcModal({ ...paymentCalcModal, show: true, sellerId: seller.id })} />
+                                                    <VisualPreview source={seller.image} size="10" hasCalculated={payments.some(p => p.date === selectedDate && p.sellerId === seller.id && p.calculated)} onClick={() => {
+                                                        const start = new Date(selectedDate + 'T12:00:00'); start.setDate(start.getDate() - 6);
+                                                        setPaymentCalcModal({ show: true, sellerId: seller.id, baseSalary: 0, startDate: start.toISOString().split('T')[0], endDate: selectedDate });
+                                                    }} isDarkMode={isDarkMode} />
                                                     <span className="font-bold">{seller.name}</span>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-3">
-                                                    <div className="space-y-1"><span className="text-[9px] text-gray-400 font-bold uppercase ml-1">Mañana</span>
-                                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-300 font-bold text-xs">$</span><input type="number" value={getPaymentAmount(seller.id, 'morning') || ''} onChange={(e) => handlePaymentChange(seller.id, 'morning', e.target.value)} className={`w-full pl-6 pr-2 py-2 ${morningFieldBg} border border-rose-100 rounded-lg text-right font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
-                                                    </div>
-                                                    <div className="space-y-1"><span className="text-[9px] text-gray-400 font-bold uppercase ml-1">Tarde</span>
-                                                        <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-300 font-bold text-xs">$</span><input type="number" value={getPaymentAmount(seller.id, 'afternoon') || ''} onChange={(e) => handlePaymentChange(seller.id, 'afternoon', e.target.value)} className={`w-full pl-6 pr-2 py-2 ${afternoonFieldBg} border border-rose-100 rounded-lg text-right font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
-                                                    </div>
+                                                    {['morning', 'afternoon'].map(shift => (
+                                                        <div key={shift} className="space-y-1">
+                                                            <span className="text-[9px] text-gray-400 font-bold uppercase ml-1">{shift === 'morning' ? 'Mañana' : 'Tarde'}</span>
+                                                            <div className="relative">
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-300 font-bold text-xs">$</span>
+                                                                <input type="number" value={getPaymentAmountLocal(seller.id, shift) || ''} onChange={(e) => handlePaymentChange(seller.id, shift, e.target.value)} className={`w-full pl-6 pr-2 py-2 ${shift === 'morning' ? morningFieldBg : afternoonFieldBg} border border-rose-100 rounded-lg text-right font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} />
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                                {/* Totales Informativos de Pagos */}
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-rose-900/20 border-rose-700/30' : 'bg-rose-50 border-rose-100'} shadow-sm text-center`}>
-                                        <p className="text-[10px] font-black uppercase text-rose-500 mb-1">Total Pagos Mañana</p>
-                                        <p className="text-xl font-black text-rose-600">$ {formatCurrency(summaryData.morningPaymentsTotal)}</p>
-                                    </div>
-                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-rose-900/20 border-rose-700/30' : 'bg-rose-50 border-rose-100'} shadow-sm text-center`}>
-                                        <p className="text-[10px] font-black uppercase text-rose-500 mb-1">Total Pagos Tarde</p>
-                                        <p className="text-xl font-black text-rose-600">$ {formatCurrency(summaryData.afternoonPaymentsTotal)}</p>
-                                    </div>
+                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-rose-900/20 border-rose-700/30' : 'bg-rose-50 border-rose-100'} shadow-sm text-center`}><p className="text-[10px] font-black uppercase text-rose-500 mb-1">Total Pagos Mañana</p><p className="text-xl font-black text-rose-600">$ {formatCurrency(summaryData.morningPaymentsTotal)}</p></div>
+                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-rose-900/20 border-rose-700/30' : 'bg-rose-50 border-rose-100'} shadow-sm text-center`}><p className="text-[10px] font-black uppercase text-rose-500 mb-1">Total Pagos Tarde</p><p className="text-xl font-black text-rose-600">$ {formatCurrency(summaryData.afternoonPaymentsTotal)}</p></div>
                                 </div>
                             </div>
                         )}
 
                         {view === 'closure' && (
                             <div className="space-y-4 animate-in">
-                                <div className={`${cardBg} p-4 rounded-2xl shadow-sm border mb-4`}>
-                                    <h2 className={`font-black text-center ${getThemeClass('text')} text-sm`}>{getFormattedDateLong(selectedDate)}</h2>
-                                </div>
-
                                 {activeBranches.map(br => {
-                                    const closure = getBranchClosure(br.id);
+                                    const closure = getBranchClosureLocal(br.id);
                                     return (
-                                        <div key={br.id} className={`${cardBg} p-4 rounded-2xl shadow-sm border`}>
+                                        <div key={br.id} className={`${cardBgClass} p-4 rounded-2xl shadow-sm border`}>
                                             <div className="flex justify-between items-center mb-4">
-                                                <div className="flex items-center gap-3"><VisualPreview source={br.image} size="10" /><h3 className={`font-black ${getThemeClass('text')} uppercase`}>{br.name}</h3></div>
+                                                <div className="flex items-center gap-3"><VisualPreview source={br.image} size="10" isDarkMode={isDarkMode} /><h3 className={`font-black ${themeClass} uppercase`}>{br.name}</h3></div>
                                                 <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded">TOT: ${formatCurrency(closure.morningAmount + closure.afternoonAmount)}</span>
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-1"><label className="text-[10px] uppercase font-black text-gray-400">Mañana</label><div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60`}>$</span><input type="number" value={closure.morningAmount || ''} onChange={(e) => handleBranchClosureChange(br.id, 'morningAmount', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${morningFieldBg} border rounded-xl font-black ${getThemeClass('text')} shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')}`} /></div></div>
-                                                <div className="space-y-1"><label className="text-[10px] uppercase font-black text-gray-400">Tarde</label><div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60`}>$</span><input type="number" value={closure.afternoonAmount || ''} onChange={(e) => handleBranchClosureChange(br.id, 'afternoonAmount', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${afternoonFieldBg} border rounded-xl font-black ${getThemeClass('text')} shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')}`} /></div></div>
+                                                {['morningAmount', 'afternoonAmount'].map(field => (
+                                                    <div key={field} className="space-y-1">
+                                                        <label className="text-[10px] uppercase font-black text-gray-400">{field === 'morningAmount' ? 'Mañana' : 'Tarde'}</label>
+                                                        <div className="relative">
+                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60">$</span>
+                                                            <input type="number" value={closure[field] || ''} onChange={(e) => handleBranchClosureChange(br.id, field, e.target.value)} className={`w-full pl-7 pr-3 p-3 ${field === 'morningAmount' ? morningFieldBg : afternoonFieldBg} border rounded-xl font-black ${themeClass} shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')}`} />
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
                                     );
                                 })}
-
-                                <div className={`${cardBg} p-4 rounded-2xl shadow-sm border`}>
-                                    <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2 flex justify-between">
-                                        Gastos y Garantías 
-                                        <span>Total: ${formatCurrency(summaryData.totalGastos + summaryData.totalGarantias)}</span>
-                                    </h3>
+                                <div className={`${cardBgClass} p-4 rounded-2xl shadow-sm border`}>
+                                    <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2 flex justify-between">Deducciones y Garantías <span>Total: ${formatCurrency(summaryData.totalGastos + summaryData.totalGarantias)}</span></h3>
                                     <div className="space-y-6">
-                                        <div>
-                                            <div onClick={() => openConceptModal('gasto')} className="text-[10px] uppercase text-rose-400 font-black flex items-center justify-between gap-1 mb-2 cursor-pointer hover:underline p-1 rounded hover:bg-rose-50 w-full">
-                                                <span className="flex items-center gap-1"><LucideIcon name="receipt" size={12} /> Gastos</span>
-                                                <span>Subtotal: ${formatCurrency(getExtraExpenseAmount('gasto', 'morning') + getExtraExpenseAmount('gasto', 'afternoon'))}</span>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 text-xs font-bold opacity-60">$</span><input type="number" value={getExtraExpenseAmount('gasto', 'morning') || ''} onChange={(e) => handleExtraExpenseChange('gasto', 'morning', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${morningFieldBg} border-rose-200 border rounded-xl font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
-                                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 text-xs font-bold opacity-60">$</span><input type="number" value={getExtraExpenseAmount('gasto', 'afternoon') || ''} onChange={(e) => handleExtraExpenseChange('gasto', 'afternoon', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${afternoonFieldBg} border-rose-200 border rounded-xl font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div onClick={() => openConceptModal('garantia')} className="text-[10px] uppercase text-rose-400 font-black flex items-center justify-between gap-1 mb-2 cursor-pointer hover:underline p-1 rounded hover:bg-rose-50 w-full">
-                                                <span className="flex items-center gap-1"><LucideIcon name="shield-check" size={12} /> Garantías</span>
-                                                <span>Subtotal: ${formatCurrency(getExtraExpenseAmount('garantia', 'morning') + getExtraExpenseAmount('garantia', 'afternoon'))}</span>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 text-xs font-bold opacity-60">$</span><input type="number" value={getExtraExpenseAmount('garantia', 'morning') || ''} onChange={(e) => handleExtraExpenseChange('garantia', 'morning', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${morningFieldBg} border-rose-200 border rounded-xl font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
-                                                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 text-xs font-bold opacity-60">$</span><input type="number" value={getExtraExpenseAmount('garantia', 'afternoon') || ''} onChange={(e) => handleExtraExpenseChange('garantia', 'afternoon', e.target.value)} className={`w-full pl-7 pr-3 p-3 ${afternoonFieldBg} border-rose-200 border rounded-xl font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} /></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className={`${cardBg} p-4 rounded-2xl shadow-sm border`}>
-                                    <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2 flex justify-between">
-                                        Terminales
-                                        <span>Total: ${formatCurrency(summaryData.totalTerminals)}</span>
-                                    </h3>
-                                    <div className="space-y-4">
-                                        {activeTerminals.map(t => (
-                                            <div key={t.id} className={`p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-800' : 'bg-gray-50/50 border-gray-50'}`}>
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <div className="flex items-center gap-3"><VisualPreview source={t.image} size="8" /><span className="font-bold">{t.name}</span></div>
-                                                    <span className="text-[10px] font-bold">Total: ${formatCurrency(getTerminalAmount(t.id, 'morning') + getTerminalAmount(t.id, 'afternoon'))}</span>
+                                        {['gasto', 'garantia'].map(type => (
+                                            <div key={type}>
+                                                <div onClick={() => setConceptModal({ show: true, type, tempDescription: extraExpenses.find(e => e.date === selectedDate && e.type === type)?.description || '' })} className="text-[10px] uppercase text-rose-400 font-black flex items-center justify-between gap-1 mb-2 cursor-pointer hover:underline p-1 rounded hover:bg-rose-50 w-full">
+                                                    <span className="flex items-center gap-1"><LucideIcon name={type === 'gasto' ? "receipt" : "shield-check"} size={12} /> {type === 'gasto' ? 'Gastos' : 'Garantías'}</span>
+                                                    <span>Subtotal: ${formatCurrency(getExtraExpenseAmountLocal(type, 'morning') + getExtraExpenseAmountLocal(type, 'afternoon'))}</span>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60`}>$</span><input type="number" value={getTerminalAmount(t.id, 'morning') || ''} onChange={(e) => handleTerminalChange(t.id, 'morning', e.target.value)} className={`w-full pl-7 pr-3 p-2 ${morningFieldBg} border rounded-lg text-right font-black ${getThemeClass('text')} outline-none`} /></div>
-                                                    <div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60`}>$</span><input type="number" value={getTerminalAmount(t.id, 'afternoon') || ''} onChange={(e) => handleTerminalChange(t.id, 'afternoon', e.target.value)} className={`w-full pl-7 pr-3 p-2 ${afternoonFieldBg} border rounded-lg text-right font-black ${getThemeClass('text')} outline-none`} /></div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    {['morning', 'afternoon'].map(shift => (
+                                                        <div key={shift} className="relative">
+                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 text-xs font-bold opacity-60">$</span>
+                                                            <input type="number" value={getExtraExpenseAmountLocal(type, shift) || ''} onChange={(e) => handleExtraExpenseChange(type, shift, e.target.value)} className={`w-full pl-7 pr-3 p-3 ${shift === 'morning' ? morningFieldBg : afternoonFieldBg} border-rose-200 border rounded-xl font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400`} />
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-
-                                {/* Cuadros Informativos de Efectivo al Final en Cierre */}
                                 <div className="grid grid-cols-2 gap-4 mt-6">
-                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/50' : 'bg-yellow-100 border-yellow-200'} shadow-sm text-center`}>
-                                        <p className="text-[10px] font-black uppercase text-yellow-600 dark:text-yellow-400 mb-1 tracking-wider">Efectivo Mañana</p>
-                                        <p className="text-2xl font-black text-yellow-700 dark:text-yellow-500 leading-none">$ {formatCurrency(summaryData.morningCashFinal)}</p>
-                                    </div>
-                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-blue-900/30 border-blue-700/50' : 'bg-blue-100 border-blue-200'} shadow-sm text-center`}>
-                                        <p className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Efectivo Tarde</p>
-                                        <p className="text-2xl font-black text-blue-700 dark:text-blue-500 leading-none">$ {formatCurrency(summaryData.afternoonCashFinal)}</p>
-                                    </div>
+                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/50' : 'bg-yellow-100 border-yellow-200'} shadow-sm text-center`}><p className="text-[10px] font-black uppercase text-yellow-600 dark:text-yellow-400 mb-1 tracking-wider">Efectivo Mañana</p><p className="text-2xl font-black text-yellow-700 dark:text-yellow-500 leading-none">$ {formatCurrency(summaryData.morningCashFinal)}</p></div>
+                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-blue-900/30 border-blue-700/50' : 'bg-blue-100 border-blue-200'} shadow-sm text-center`}><p className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Efectivo Tarde</p><p className="text-2xl font-black text-blue-700 dark:text-blue-500 leading-none">$ {formatCurrency(summaryData.afternoonCashFinal)}</p></div>
                                 </div>
                             </div>
                         )}
 
                         {view === 'summary' && (
                             <div className="space-y-4 animate-in">
-                                <div onClick={copySummaryText} className={`${cardBg} p-6 rounded-3xl shadow-xl border cursor-pointer active:scale-[0.98] transition-all`}>
-                                    <div className="flex justify-between items-center mb-6"><h2 className={`font-black text-lg ${getThemeClass('text')}`}>{summaryData.date}</h2><LucideIcon name="copy" size={20} className={getThemeClass('text')} /></div>
+                                <div onClick={copySummaryText} className={`${cardBgClass} p-6 rounded-3xl shadow-xl border cursor-pointer active:scale-[0.98] transition-all`}>
+                                    <div className="flex justify-between items-center"><h2 className={`font-black text-lg ${themeClass}`}>{getFormattedDateLong(summaryData.date)}</h2><LucideIcon name="copy" size={20} className={themeClass} /></div>
+                                </div>
+                                <div className={`${cardBgClass} p-6 rounded-3xl shadow-xl border`}>
                                     <div className="space-y-4">
-                                        <div><h3 className="text-[10px] font-black uppercase text-gray-400 mb-2 border-b">Sucursales</h3>
-                                            {summaryData.detailByBranch.map((b, i) => (<div key={i} className="flex justify-between text-sm py-1 border-b border-gray-50"><span className="text-gray-500">{b.name}</span><span className="font-black">$ {formatCurrency(b.total)}</span></div>))}
-                                            <div className={`flex justify-between font-black text-lg pt-2 ${getThemeClass('text')}`}><span>TOTAL VENTAS</span><span>$ {formatCurrency(summaryData.totalGross)}</span></div>
-                                        </div>
-                                        <div className="pt-4 border-t"><h3 className="text-[10px] font-black uppercase text-gray-400 mb-2">Deducciones</h3>
-                                            {summaryData.paymentsBySeller.map((p, i) => (<div key={i} className="flex justify-between text-xs py-1"><span className="italic text-gray-400">{p.name}</span><span className="font-bold text-rose-500">-$ {formatCurrency(p.amount)}</span></div>))}
-                                            {Object.entries(summaryData.groupedExtras).map(([k, d]) => (<div key={k} className="flex justify-between text-sm py-1"><span className="text-gray-500">{k}:</span><span className="font-black text-rose-500">-$ {formatCurrency(d.amount)}</span></div>))}
-                                            <div className="flex justify-between font-black text-lg pt-4 border-t"><span>TOTAL DÍA</span><span>$ {formatCurrency(summaryData.totalDay)}</span></div>
-                                            <div className="flex justify-between text-sm pt-2"><span className="text-gray-400">Terminales:</span><span className="font-black text-emerald-600">-$ {formatCurrency(summaryData.totalTerminals)}</span></div>
-                                        </div>
-                                        <div className={`${getThemeClass('bg')} ${getThemeClass('headerText')} p-6 rounded-2xl shadow-lg border-2 ${getThemeClass('border')} text-center relative overflow-hidden`}>
-                                            <p className="text-xs uppercase font-black opacity-60 mb-1">Efectivo Total</p>
-                                            <p className="text-5xl font-black">$ {formatCurrency(summaryData.totalCash)}</p>
-                                            <LucideIcon name="banknote" size={100} className="absolute -right-4 -bottom-4 opacity-10 rotate-12" />
-                                        </div>
+                                        <div><h3 className="text-[10px] font-black uppercase text-gray-400 mb-2 border-b">Sucursales</h3>{summaryData.detailByBranch.map((b, i) => (<div key={i} className="flex justify-between text-sm py-1 border-b border-gray-50"><span className="text-gray-500">{b.name}</span><span className="font-black">$ {formatCurrency(b.total)}</span></div>))}<div className={`flex justify-between font-black text-lg pt-2 ${themeClass}`}><span>TOTAL VENTAS</span><span>$ {formatCurrency(summaryData.totalGross)}</span></div></div>
+                                        <div className="pt-4 border-t"><h3 className="text-[10px] font-black uppercase text-gray-400 mb-2">Deducciones</h3>{summaryData.paymentsBySeller.map((p, i) => (<div key={i} className="flex justify-between text-xs py-1"><span className="italic text-gray-400">{p.name}</span><span className="font-bold text-rose-500">-$ {formatCurrency(p.amount)}</span></div>))}{Object.entries(summaryData.groupedExtras).map(([k, d]) => (<div key={k} className="flex justify-between text-sm py-1"><span className="text-gray-500">{k}:</span><span className="font-black text-rose-500">-$ {formatCurrency(d.amount)}</span></div>))}<div className="flex justify-between font-black text-lg pt-4 border-t"><span>TOTAL DÍA</span><span>$ {formatCurrency(summaryData.totalDay)}</span></div><div className="flex justify-between text-sm pt-2"><span className="text-gray-400">Terminales:</span><span className="font-black text-emerald-600">-$ {formatCurrency(summaryData.totalTerminals)}</span></div></div>
+                                        <button onClick={copySummaryText} className={`w-full ${getThemeClass('bg')} ${getThemeClass('headerText')} p-6 rounded-2xl shadow-lg border-2 ${getThemeClass('border')} text-center relative overflow-hidden transition-all active:scale-[0.98]`}><p className="text-xs uppercase font-black opacity-60 mb-1">Efectivo Total</p><p className="text-5xl font-black">$ {formatCurrency(summaryData.totalCash)}</p><LucideIcon name="banknote" size={100} className="absolute -right-4 -bottom-4 opacity-10 rotate-12" /></button>
                                     </div>
                                 </div>
                             </div>
@@ -737,45 +617,41 @@
                         {view === 'settings' && (
                             <div className="space-y-6 animate-in">
                                 <div className={`${getThemeClass('bg')} ${getThemeClass('headerText')} p-5 rounded-2xl flex justify-between items-center shadow-sm border ${getThemeClass('border')}`}>
-                                    <div><h2 className="font-black text-lg">Copia de Seguridad</h2><p className="text-[10px] font-bold opacity-70">Respalda tus registros localmente</p></div>
+                                    <div><h2 className="font-black text-lg">Copia de Seguridad</h2><p className="text-[10px] font-bold opacity-70">Respalda registros localmente</p></div>
                                     <div className="flex gap-2">
                                         <button onClick={exportBackup} className="p-3 bg-white/30 rounded-xl hover:bg-white/50 transition-all active:scale-95"><LucideIcon name="download" size={24} /></button>
                                         <button onClick={() => fileInputRef.current.click()} className="p-3 bg-white/30 rounded-xl hover:bg-white/50 transition-all active:scale-95"><LucideIcon name="upload" size={24} /></button>
                                         <input type="file" ref={fileInputRef} onChange={importBackup} accept=".json" className="hidden" />
                                     </div>
                                 </div>
-                                <div className={`${cardBg} p-5 rounded-2xl border shadow-sm`}>
-                                    <div className="flex items-center justify-between mb-4"><h2 className="font-black text-lg">Personalización</h2>
-                                        <button onClick={() => { setIsDarkMode(!isDarkMode); setSaveStatus('loading'); }} className={`flex items-center gap-2 p-2 px-3 rounded-xl border transition-all ${isDarkMode ? 'bg-gray-800 text-amber-300' : 'bg-gray-50 text-indigo-500'}`}>{isDarkMode ? <LucideIcon name="sun" size={20} /> : <LucideIcon name="moon" size={20} />}</button>
-                                    </div>
-                                    <div className="flex justify-between gap-2">{(['indigo', 'emerald', 'rose', 'amber', 'slate']).map(t => (<button key={t} onClick={() => { setTheme(t); setSaveStatus('loading'); }} className={`w-10 h-10 rounded-full border-2 transition-all ${theme === t ? 'ring-2 ring-offset-2 ring-gray-400 scale-110 shadow-md' : 'border-transparent'} ${themeColors[t].dot}`} />))}</div>
+                                <div className={`${cardBgClass} p-5 rounded-2xl border shadow-sm`}>
+                                    <div className="flex items-center justify-between mb-4"><h2 className="font-black text-lg">Personalización</h2><button onClick={() => setIsDarkMode(!isDarkMode)} className={`flex items-center gap-2 p-2 px-3 rounded-xl border transition-all ${isDarkMode ? 'bg-gray-800 text-amber-300' : 'bg-gray-50 text-indigo-500'}`}>{isDarkMode ? <LucideIcon name="sun" size={20} /> : <LucideIcon name="moon" size={20} />}</button></div>
+                                    <div className="flex justify-between gap-2">{(['indigo', 'emerald', 'rose', 'amber', 'slate']).map(t => (<button key={t} onClick={() => setTheme(t)} className={`w-10 h-10 rounded-full border-2 transition-all ${theme === t ? 'ring-2 ring-offset-2 ring-gray-400 scale-110 shadow-md' : 'border-transparent'} ${themeColors[t].dot}`} />))}</div>
                                 </div>
-                                {[{ label: 'Vendedores', type: 'seller', items: sellers }, { label: 'Sucursales', type: 'branch', items: branches }, { label: 'Terminales', type: 'terminal', items: terminals }].map(section => (
-                                    <div key={section.type} className={`${cardBg} p-5 rounded-2xl border shadow-sm`}>
+
+                                {[
+                                    { label: 'Vendedores', type: 'seller', items: sellers },
+                                    { label: 'Sucursales', type: 'branch', items: branches },
+                                    { label: 'Terminales', type: 'terminal', items: terminals }
+                                ].map(section => (
+                                    <div key={section.type} className={`${cardBgClass} p-5 rounded-2xl border shadow-sm`}>
                                         <div className="flex justify-between items-center mb-5"><h2 className="font-black text-xl">{section.label}</h2><button onClick={() => {
                                             const newId = Date.now().toString(); const list = section.items; const max = list.length > 0 ? Math.max(...list.map(i => i.order)) : -1;
                                             const newItem = { id: newId, name: `${section.label} ${list.length + 1}`, active: true, order: max + 1 };
-                                            setSaveStatus('loading');
-                                            if (section.type === 'seller') setSellers(prev => [...prev, newItem]); else if (section.type === 'branch') setBranches(prev => [...prev, newItem]); else if (section.type === 'terminal') setTerminals(prev => [...prev, newItem]);
+                                            if (section.type === 'seller') setSellers(prev => [...prev, newItem]); else if (section.type === 'branch') setBranches(prev => [...prev, newItem]); else setTerminals(prev => [...prev, newItem]);
                                         }} className={`p-2 px-4 ${getThemeClass('btn')} text-white rounded-full text-xs font-black shadow-sm`}>+ AÑADIR</button></div>
                                         <div className="space-y-3">
                                             {section.items.map((item) => (
                                                 <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border shadow-sm ${item.active ? (isDarkMode ? 'bg-gray-800' : 'bg-gray-50') : 'bg-gray-200 opacity-60'}`}>
                                                     <div className="flex items-center gap-3 flex-1">
-                                                        <div className="relative" onClick={() => { setTargetIdForPhoto({ id: item.id, type: section.type }); photoInputRef.current.click(); }}><VisualPreview source={item.image} /><div className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow-sm border"><LucideIcon name="camera" size={10} /></div></div>
+                                                        <div className="relative" onClick={() => { setTargetIdForPhoto({ id: item.id, type: section.type }); photoInputRef.current.click(); }}><VisualPreview source={item.image} isDarkMode={isDarkMode} /><div className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow-sm border"><LucideIcon name="camera" size={10} /></div></div>
                                                         <input type="text" value={item.name} onChange={(e) => {
                                                             const n = e.target.value; 
-                                                            setSaveStatus('loading');
-                                                            if (section.type === 'seller') setSellers(prev => prev.map(s => s.id === item.id ? {...s, name: n} : s));
-                                                            else if (section.type === 'branch') setBranches(prev => prev.map(b => b.id === item.id ? {...b, name: n} : b));
-                                                            else if (section.type === 'terminal') setTerminals(prev => prev.map(t => t.id === item.id ? {...t, name: n} : t));
+                                                            if (section.type === 'seller') setSellers(prev => prev.map(s => s.id === item.id ? {...s, name: n} : s)); else if (section.type === 'branch') setBranches(prev => prev.map(b => b.id === item.id ? {...b, name: n} : b)); else setTerminals(prev => prev.map(t => t.id === item.id ? {...t, name: n} : t));
                                                         }} className="font-black text-sm bg-transparent border-none focus:ring-0 w-full outline-none" />
                                                     </div>
                                                     <button onClick={() => {
-                                                        setSaveStatus('loading');
-                                                        if (section.type === 'seller') setSellers(prev => prev.map(s => s.id === item.id ? {...s, active: !s.active} : s));
-                                                        else if (section.type === 'branch') setBranches(prev => prev.map(b => b.id === item.id ? {...b, active: !b.active} : b));
-                                                        else if (section.type === 'terminal') setTerminals(prev => prev.map(t => t.id === item.id ? {...t, active: !t.active} : t));
+                                                        if (section.type === 'seller') setSellers(prev => prev.map(s => s.id === item.id ? {...s, active: !s.active} : s)); else if (section.type === 'branch') setBranches(prev => prev.map(b => b.id === item.id ? {...b, active: !b.active} : b)); else setTerminals(prev => prev.map(t => t.id === item.id ? {...t, active: !t.active} : t));
                                                     }} className="p-3 rounded-xl">{item.active ? <LucideIcon name="eye" size={20} className="text-emerald-500" /> : <LucideIcon name="eye-off" size={20} />}</button>
                                                 </div>
                                             ))}
@@ -783,22 +659,15 @@
                                     </div>
                                 ))}
                                 <input type="file" ref={photoInputRef} onChange={async (e) => { 
-                                    const f = e.target.files[0]; if (!f || !targetIdForPhoto) return; 
-                                    const reader = new FileReader(); 
+                                    const f = e.target.files[0]; if (!f || !targetIdForPhoto) return; const reader = new FileReader(); 
                                     reader.onload = (ev) => { 
-                                        const img = new Image(); 
-                                        img.onload = () => { 
+                                        const img = new Image(); img.onload = () => { 
                                             const canvas = document.createElement('canvas'); const scale = 120 / img.width; canvas.width = 120; canvas.height = img.height * scale; 
                                             canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height); const b = canvas.toDataURL('image/jpeg', 0.6); const { id, type } = targetIdForPhoto; 
-                                            setSaveStatus('loading');
-                                            if (type === 'seller') setSellers(pv => pv.map(s => s.id === id ? {...s, image: b} : s)); 
-                                            else if (type === 'branch') setBranches(pv => pv.map(br => br.id === id ? {...br, image: b} : br)); 
-                                            else if (type === 'terminal') setTerminals(pv => pv.map(t => t.id === id ? {...t, image: b} : t)); 
+                                            if (type === 'seller') setSellers(pv => pv.map(s => s.id === id ? {...s, image: b} : s)); else if (type === 'branch') setBranches(pv => pv.map(br => br.id === id ? {...br, image: b} : br)); else setTerminals(pv => pv.map(t => t.id === id ? {...t, image: b} : t)); 
                                             setTargetIdForPhoto(null); 
-                                        }; 
-                                        img.src = ev.target.result; 
-                                    }; 
-                                    reader.readAsDataURL(f); 
+                                        }; img.src = ev.target.result; 
+                                    }; reader.readAsDataURL(f); 
                                 }} accept="image/*" className="hidden" />
                             </div>
                         )}
@@ -808,37 +677,21 @@
 
                     {/* Modales */}
                     {conceptModal.show && (
-                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                            <div className={`${cardBg} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in`}>
-                                <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}>
-                                    <div className="flex items-center gap-2"><LucideIcon name="message-square-text" size={20} className={getThemeClass('text')} /><h3 className={`font-black uppercase text-sm ${getThemeClass('text')}`}>Capturar Concepto</h3></div>
-                                    <button onClick={() => setConceptModal(pv => ({ ...pv, show: false }))}><LucideIcon name="x" size={24} className={getThemeClass('text')} /></button>
-                                </div>
-                                <div className="p-6 space-y-4">
-                                    <label className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Descripción del {conceptModal.type === 'gasto' ? 'Gasto' : 'Garantía'}</label>
-                                    <textarea value={conceptModal.tempDescription} onChange={(e) => setConceptModal(pv => ({ ...pv, tempDescription: e.target.value }))} placeholder={`Escriba aquí el motivo...`} className={`w-full p-4 h-32 ${inputBg} border rounded-2xl font-medium text-sm outline-none focus:ring-2 ${getThemeClass('ring')} resize-none`} autoFocus />
-                                    <button onClick={saveConcept} className={`w-full py-4 rounded-2xl ${getThemeClass('btn')} text-white font-black uppercase text-sm shadow-xl transition-all active:scale-95`}>GUARDAR</button>
-                                </div>
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if(e.target === e.currentTarget) setConceptModal(pv => ({ ...pv, show: false })); }}>
+                            <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in`}>
+                                <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}><div className="flex items-center gap-2"><LucideIcon name="message-square-text" size={20} className={themeClass} /><h3 className={`font-black uppercase text-sm ${themeClass}`}>Capturar Concepto</h3></div><button onClick={() => setConceptModal(pv => ({ ...pv, show: false }))}><LucideIcon name="x" size={24} className={themeClass} /></button></div>
+                                <div className="p-6 space-y-4"><textarea value={conceptModal.tempDescription} onChange={(e) => setConceptModal(pv => ({ ...pv, tempDescription: e.target.value }))} placeholder="Descripción..." className={`w-full p-4 h-32 ${inputBgClass} border rounded-2xl font-medium text-sm outline-none focus:ring-2 ${getThemeClass('ring')} resize-none`} autoFocus /><button onClick={saveConcept} className={`w-full py-4 rounded-2xl ${getThemeClass('btn')} text-white font-black uppercase text-sm shadow-xl transition-all active:scale-95`}>GUARDAR</button></div>
                             </div>
                         </div>
                     )}
 
                     {commissionModal.show && (
-                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                            <div className={`${cardBg} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in`}>
-                                <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}>
-                                    <div className="flex items-center gap-2"><LucideIcon name="percent" size={20} className={getThemeClass('text')} /><h3 className={`font-black uppercase text-sm ${getThemeClass('text')}`}>Comisión</h3></div>
-                                    <button onClick={() => setCommissionModal(pv => ({ ...pv, show: false }))}><LucideIcon name="x" size={24} className={getThemeClass('text')} /></button>
-                                </div>
-                                <div className="p-6 space-y-6">
-                                    <div className="flex flex-wrap gap-2">{(['10', '20', '25', 'mixto']).map(t => (<button key={t} onClick={() => setCommissionModal(pv => ({ ...pv, tempType: t }))} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${commissionModal.tempType === t ? getThemeClass('btn') + ' text-white scale-105 shadow-md' : 'bg-gray-100 text-gray-400'}`}>{t === 'mixto' ? 'Mixto' : `${t}%`}</button>))}</div>
-                                    {commissionModal.tempType === 'mixto' && (
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <input type="number" placeholder="20%" value={commissionModal.tempM20 || ''} onChange={(e) => setCommissionModal(pv => ({ ...pv, tempM20: parseFloat(e.target.value) || 0 }))} className={`w-full p-3 ${inputBg} border rounded-xl font-black text-sm`} />
-                                            <input type="number" placeholder="25%" value={commissionModal.tempM25 || ''} onChange={(e) => setCommissionModal(pv => ({ ...pv, tempM25: parseFloat(e.target.value) || 0 }))} className={`w-full p-3 ${inputBg} border rounded-xl font-black text-sm`} />
-                                        </div>
-                                    )}
-                                    <div className="p-4 rounded-xl bg-emerald-50 text-center font-black text-emerald-600"><p className="text-[9px] uppercase">Comisión Estimada</p><p className="text-4xl">$ {formatCurrency(commissionModal.tempType === 'none' ? 0 : (commissionModal.tempType === 'mixto' ? (commissionModal.tempM20 * 0.2 + commissionModal.tempM25 * 0.25) : (getSaleAmount(commissionModal.sellerId, commissionModal.shift) * (parseFloat(commissionModal.tempType) / 100))))}</p></div>
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if(e.target === e.currentTarget) setCommissionModal(pv => ({ ...pv, show: false })); }}>
+                            <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in`}>
+                                <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}><div className="flex items-center gap-2"><LucideIcon name="percent" size={20} className={themeClass} /><h3 className={`font-black uppercase text-sm ${themeClass}`}>Comisión</h3></div><button onClick={() => setCommissionModal(pv => ({ ...pv, show: false }))}><LucideIcon name="x" size={24} className={themeClass} /></button></div>
+                                <div className="p-6 space-y-6"><div className="flex flex-wrap gap-2">{(['10', '20', '25', 'mixto']).map(t => (<button key={t} onClick={() => setCommissionModal(pv => ({ ...pv, tempType: t }))} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${commissionModal.tempType === t ? getThemeClass('btn') + ' text-white scale-105 shadow-md' : 'bg-gray-100 text-gray-400'}`}>{t === 'mixto' ? 'Mixto' : `${t}%`}</button>))}</div>
+                                    {commissionModal.tempType === 'mixto' && (<div className="grid grid-cols-2 gap-4"><input type="number" placeholder="20%" value={commissionModal.tempM20 || ''} onChange={(e) => setCommissionModal(pv => ({ ...pv, tempM20: parseFloat(e.target.value) || 0 }))} className={`w-full p-3 ${inputBgClass} border rounded-xl font-black text-sm`} /><input type="number" placeholder="25%" value={commissionModal.tempM25 || ''} onChange={(e) => setCommissionModal(pv => ({ ...pv, tempM25: parseFloat(e.target.value) || 0 }))} className={`w-full p-3 ${inputBgClass} border rounded-xl font-black text-sm`} /></div>)}
+                                    <div className="p-4 rounded-xl bg-emerald-50 text-center font-black text-emerald-600"><p className="text-[9px] uppercase">Comisión Estimada</p><p className="text-4xl">$ {formatCurrency(commissionModal.tempType === 'none' ? 0 : (commissionModal.tempType === 'mixto' ? (commissionModal.tempM20 * 0.2 + commissionModal.tempM25 * 0.25) : (getSaleAmountLocal(commissionModal.sellerId, commissionModal.shift) * (parseFloat(commissionModal.tempType) / 100))))}</p></div>
                                     <button onClick={saveCommission} className={`w-full py-4 rounded-2xl ${getThemeClass('btn')} text-white font-black uppercase text-sm shadow-xl transition-all active:scale-95`}>GUARDAR</button>
                                 </div>
                             </div>
@@ -846,38 +699,62 @@
                     )}
 
                     {paymentCalcModal.show && (
-                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                            <div className={`${cardBg} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in flex flex-col max-h-[90vh]`}>
-                                <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}>
-                                    <div className="flex items-center gap-2"><LucideIcon name="calculator" size={20} className={getThemeClass('text')} /><h3 className={`font-black uppercase text-sm ${getThemeClass('text')}`}>Calculadora de Pago</h3></div>
-                                    <button onClick={() => setPaymentCalcModal(pv => ({ ...pv, show: false }))}><LucideIcon name="x" size={24} className={getThemeClass('text')} /></button>
-                                </div>
-                                <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <input type="date" value={paymentCalcModal.startDate} onChange={e => setPaymentCalcModal(pv => ({...pv, startDate: e.target.value}))} className={`w-full p-2 ${inputBg} border rounded-lg text-[10px] font-bold`} />
-                                        <input type="date" value={paymentCalcModal.endDate} onChange={e => setPaymentCalcModal(pv => ({...pv, endDate: e.target.value}))} className={`w-full p-2 ${inputBg} border rounded-lg text-[10px] font-bold`} />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between items-center p-2 rounded-lg bg-emerald-50 text-[10px] font-black text-emerald-600 uppercase"><span>Comisiones</span><span>$ {formatCurrency(calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</span></div>
-                                        <div className="flex justify-between items-center p-2 rounded-lg bg-rose-50 text-[10px] font-black text-rose-600 uppercase"><span>A cuenta</span><span>-$ {formatCurrency(calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</span></div>
-                                    </div>
-                                    <input type="number" placeholder="Sueldo Base" value={paymentCalcModal.baseSalary || ''} onChange={e => setPaymentCalcModal(pv => ({...pv, baseSalary: parseFloat(e.target.value) || 0}))} className={`w-full p-4 ${inputBg} border rounded-xl font-black shadow-inner`} />
-                                    <div className="p-5 rounded-2xl bg-indigo-500 text-white shadow-xl text-center space-y-4">
-                                        <p className="text-[10px] font-black uppercase opacity-60">Pagar</p>
-                                        <p className="text-4xl font-black tracking-tight">$ {formatCurrency(calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</p>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button onClick={() => { 
-                                                const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); 
-                                                setSaveStatus('loading');
-                                                setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'morning')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'morning', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); 
-                                            }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Mañana</button>
-                                            <button onClick={() => { 
-                                                const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); 
-                                                setSaveStatus('loading');
-                                                setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'afternoon')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'afternoon', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); 
-                                            }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Tarde</button>
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if(e.target === e.currentTarget) setPaymentCalcModal(pv => ({ ...pv, show: false })); }}>
+                            <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in flex flex-col max-h-[90vh]`}>
+                                <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}><div className="flex items-center gap-2"><LucideIcon name="calculator" size={20} className={themeClass} /><h3 className={`font-black uppercase text-sm ${themeClass}`}>Calculadora de Pago</h3></div><button onClick={() => setPaymentCalcModal(pv => ({ ...pv, show: false }))}><LucideIcon name="x" size={24} className={themeClass} /></button></div>
+                                <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                                    <div className="space-y-3">
+                                        <div className="flex flex-col gap-2">
+                                            <span className="text-[10px] font-black uppercase text-gray-400">Fecha de Inicio</span>
+                                            <div className={`flex items-center justify-between gap-2 p-2 rounded-xl border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200 shadow-sm'}`}>
+                                                <button onClick={() => { const d = new Date(paymentCalcModal.startDate + 'T12:00:00'); d.setDate(d.getDate() - 1); setPaymentCalcModal(pv => ({...pv, startDate: d.toISOString().split('T')[0]})); }} className={themeClass}><LucideIcon name="chevron-left" size={24} /></button>
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-[9px] font-black opacity-50 uppercase">{getDayOfWeek(paymentCalcModal.startDate)}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <LucideIcon name="calendar" size={12} className="text-sky-400" />
+                                                        <input type="date" value={paymentCalcModal.startDate} onChange={e => setPaymentCalcModal(pv => ({...pv, startDate: e.target.value}))} className="bg-transparent text-xs font-black outline-none cursor-pointer" />
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => { const d = new Date(paymentCalcModal.startDate + 'T12:00:00'); d.setDate(d.getDate() + 1); setPaymentCalcModal(pv => ({...pv, startDate: d.toISOString().split('T')[0]})); }} className={themeClass}><LucideIcon name="chevron-right" size={24} /></button>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <span className="text-[10px] font-black uppercase text-gray-400">Fecha de Fin</span>
+                                            <div className={`flex items-center justify-between gap-2 p-2 rounded-xl border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200 shadow-sm'}`}>
+                                                <button onClick={() => { const d = new Date(paymentCalcModal.endDate + 'T12:00:00'); d.setDate(d.getDate() - 1); setPaymentCalcModal(pv => ({...pv, endDate: d.toISOString().split('T')[0]})); }} className={themeClass}><LucideIcon name="chevron-left" size={24} /></button>
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-[9px] font-black opacity-50 uppercase">{getDayOfWeek(paymentCalcModal.endDate)}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <LucideIcon name="calendar" size={12} className="text-sky-400" />
+                                                        <input type="date" value={paymentCalcModal.endDate} onChange={e => setPaymentCalcModal(pv => ({...pv, endDate: e.target.value}))} className="bg-transparent text-xs font-black outline-none cursor-pointer" />
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => { const d = new Date(paymentCalcModal.endDate + 'T12:00:00'); d.setDate(d.getDate() + 1); setPaymentCalcModal(pv => ({...pv, endDate: d.toISOString().split('T')[0]})); }} className={themeClass}><LucideIcon name="chevron-right" size={24} /></button>
+                                            </div>
                                         </div>
                                     </div>
+
+                                    <div className="space-y-3">
+                                        <div><h4 className="text-[10px] font-black uppercase text-gray-400 mb-2">Desglose Comisiones</h4>
+                                            <div className="space-y-1">{getCommissionsBreakdown(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate).map(([date, shifts]) => (
+                                                <div key={date} className="flex flex-col p-2 bg-emerald-50 dark:bg-emerald-900/10 rounded-lg text-[10px] border border-emerald-100 dark:border-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+                                                    {shifts.morning > 0 && (<div className="flex justify-between items-center py-1"><span className="flex items-center gap-1 font-bold"><span className="inline-flex items-center justify-center w-4 h-4 text-[8px] bg-yellow-400 text-yellow-900 rounded-sm">M</span> <span>{getDayOfWeek(date)} {date}</span></span><span>${formatCurrency(shifts.morning)}</span></div>)}
+                                                    {shifts.afternoon > 0 && (<div className="flex justify-between items-center py-1"><span className="flex items-center gap-1 font-bold"><span className="inline-flex items-center justify-center w-4 h-4 text-[8px] bg-blue-500 text-white rounded-sm">T</span> <span>{getDayOfWeek(date)} {date}</span></span><span>${formatCurrency(shifts.afternoon)}</span></div>)}
+                                                </div>
+                                            ))}</div>
+                                        </div>
+                                        <div><h4 className="text-[10px] font-black uppercase text-gray-400 mb-2">Desglose A Cuenta</h4>
+                                            <div className="space-y-1">{getPaymentsBreakdown(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate).map(([date, shifts]) => (
+                                                <div key={date} className="flex flex-col p-2 bg-rose-50 dark:bg-rose-900/10 rounded-lg text-[10px] border border-rose-100 dark:border-rose-900/20 text-rose-600 dark:text-rose-400">
+                                                    {shifts.morning > 0 && (<div className="flex justify-between items-center py-1"><span className="flex items-center gap-1 font-bold"><span className="inline-flex items-center justify-center w-4 h-4 text-[8px] bg-yellow-400 text-yellow-900 rounded-sm">M</span> <span>{getDayOfWeek(date)} {date}</span></span><span>-${formatCurrency(shifts.morning)}</span></div>)}
+                                                    {shifts.afternoon > 0 && (<div className="flex justify-between items-center py-1"><span className="flex items-center gap-1 font-bold"><span className="inline-flex items-center justify-center w-4 h-4 text-[8px] bg-blue-500 text-white rounded-sm">T</span> <span>{getDayOfWeek(date)} {date}</span></span><span>-${formatCurrency(shifts.afternoon)}</span></div>)}
+                                                </div>
+                                            ))}</div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1 pt-2 border-t"><div className="flex justify-between items-center p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-[10px] font-black text-emerald-600 uppercase"><span>Total Comisiones</span><span>$ {formatCurrency(calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</span></div><div className="flex justify-between items-center p-2 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-[10px] font-black text-rose-600 uppercase"><span>Total A cuenta</span><span>-$ {formatCurrency(calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</span></div></div>
+                                    <input type="number" placeholder="Sueldo Base" value={paymentCalcModal.baseSalary || ''} onChange={e => setPaymentCalcModal(pv => ({...pv, baseSalary: parseFloat(e.target.value) || 0}))} className={`w-full p-4 ${inputBgClass} border rounded-xl font-black shadow-inner`} />
+                                    <div className="p-5 rounded-2xl bg-indigo-500 text-white shadow-xl text-center space-y-4"><p className="text-[10px] font-black uppercase opacity-60">Pagar</p><p className="text-4xl font-black tracking-tight">$ {formatCurrency(calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</p><div className="grid grid-cols-2 gap-2"><button onClick={() => { const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'morning')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'morning', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Mañana</button><button onClick={() => { const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'afternoon')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'afternoon', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Tarde</button></div></div>
                                 </div>
                             </div>
                         </div>
@@ -887,8 +764,10 @@
         };
 
         const rootElement = document.getElementById('root');
-        const root = ReactDOM.createRoot(rootElement);
-        root.render(<App />);
+        if (rootElement) {
+            const root = ReactDOM.createRoot(rootElement);
+            root.render(<App />);
+        }
     </script>
 </body>
 </html>
