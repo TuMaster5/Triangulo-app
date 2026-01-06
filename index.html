@@ -41,7 +41,6 @@
         const { useState, useEffect, useMemo, useRef } = React;
 
         // --- CONFIGURACIÓN DE SUPABASE ---
-        // Asegúrate de que estas credenciales sean correctas
         const SUPABASE_URL = 'https://gpkiboiatmshvwmwdnqx.supabase.co'; 
         const SUPABASE_KEY = 'sb_publishable_hyl_Srp08L9DdwCBG7Fd-g_QX9qRUfU';
         
@@ -49,7 +48,6 @@
             ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
             : null;
 
-        // Icon Component Wrapper for Lucide
         const Icon = ({ name, size = 24, className = "", fill = "none" }) => {
             const [iconElement, setIconElement] = useState(null);
             useEffect(() => {
@@ -142,7 +140,6 @@
             const [targetIdForPhoto, setTargetIdForPhoto] = useState(null);
             const statusTimeoutRef = useRef(null);
 
-            // Cargar datos al iniciar
             useEffect(() => {
                 const loadData = async () => {
                     const localData = localStorage.getItem('vendas_app_data');
@@ -193,40 +190,23 @@
 
             const persistData = async () => {
                 if (sellers.length === 0) return;
-                
                 if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
                 setSaveStatus('loading');
-                
                 const dataToSave = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
                 localStorage.setItem('vendas_app_data', JSON.stringify(dataToSave));
-
                 if (supabase) {
                     try {
-                        const { error } = await supabase
-                            .from('app_data')
-                            .insert([{ content: dataToSave }]);
-                        
-                        if (error) throw error;
-                        setSaveStatus('success');
-                    } catch (e) {
-                        // Mejora de logs para evitar [object Object]
-                        const errorMsg = e?.message || (typeof e === 'string' ? e : JSON.stringify(e));
-                        console.error("Error guardando en Supabase:", errorMsg);
-                        setSaveStatus('error');
-                    }
-                } else {
-                    setSaveStatus('success');
-                }
-                
-                statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
+                        const { error } = await supabase.from('app_data').insert([{ content: dataToSave }]);
+                        if (error) { console.error("Error de Supabase:", error.message); setSaveStatus('error'); }
+                        else { setSaveStatus('success'); }
+                    } catch (e) { console.error("Falla en el sistema:", e?.message || "Error desconocido"); setSaveStatus('error'); }
+                } else { setSaveStatus('success'); }
+                statusTimeoutRef.current = setTimeout(() => { setSaveStatus('idle'); }, 4000);
             };
 
-            // Efecto para auto-guardado con debounce
             useEffect(() => {
                 if (sellers.length === 0) return;
-                const timer = setTimeout(() => {
-                    persistData();
-                }, 1500); 
+                const timer = setTimeout(() => { persistData(); }, 1500); 
                 return () => clearTimeout(timer);
             }, [sales, payments, branchClosures, terminalEntries, extraExpenses, sellers, branches, terminals, theme, isDarkMode]);
 
@@ -274,17 +254,12 @@
             const sortedSellersForSales = useMemo(() => {
                 const shift = (view === 'morning' || view === 'afternoon') ? view : null;
                 if (!shift) return activeSellers;
-                
                 return [...activeSellers].sort((a, b) => {
                     const entryA = sales.find(s => s.date === selectedDate && s.sellerId === a.id && s.shift === shift);
                     const entryB = sales.find(s => s.date === selectedDate && s.sellerId === b.id && s.shift === shift);
-                    
-                    const hasA = entryA !== undefined;
-                    const hasB = entryB !== undefined;
-                    
+                    const hasA = entryA !== undefined; const hasB = entryB !== undefined;
                     if (hasA && hasB) return entryB.amount - entryA.amount;
-                    if (hasA) return -1;
-                    if (hasB) return 1;
+                    if (hasA) return -1; if (hasB) return 1;
                     return a.order - b.order;
                 });
             }, [activeSellers, sales, selectedDate, view]);
@@ -386,10 +361,12 @@
                 const dayPayments = payments.filter(p => p.date === selectedDate);
                 const dayTerminals = terminalEntries.filter(t => t.date === selectedDate);
                 const dayExtras = extraExpenses.filter(e => e.date === selectedDate);
+                
                 const detailByBranch = activeBranches.map(br => {
                     const data = dayClosures.find(c => c.branchId === br.id);
-                    return { name: br.name, total: (data?.morningAmount || 0) + (data?.afternoonAmount || 0) };
+                    return { name: br.name, total: (data?.morningAmount || 0) + (data?.afternoonAmount || 0), morning: data?.morningAmount || 0, afternoon: data?.afternoonAmount || 0 };
                 });
+                
                 const totalGross = detailByBranch.reduce((acc, b) => acc + b.total, 0);
                 const totalPayments = dayPayments.reduce((acc, p) => acc + p.amount, 0);
                 const totalGastos = dayExtras.filter(e => e.type === 'gasto').reduce((acc, e) => acc + e.amount, 0);
@@ -398,28 +375,80 @@
                 const totalDay = totalGross - totalDeductions;
                 const totalTerminals = dayTerminals.reduce((acc, t) => acc + t.amount, 0);
                 const totalCash = totalDay - totalTerminals;
-                const morningCashTotal = dayClosures.reduce((acc, b) => acc + b.morningAmount, 0) - dayTerminals.filter(t => t.shift === 'morning').reduce((acc, t) => acc + t.amount, 0) - dayExtras.filter(e => e.shift === 'morning' && e.type === 'gasto').reduce((acc, e) => acc + e.amount, 0) - dayExtras.filter(e => e.shift === 'morning' && e.type === 'garantia').reduce((acc, e) => acc + e.amount, 0) - dayPayments.filter(p => p.shift === 'morning').reduce((acc, p) => acc + p.amount, 0);
-                const afternoonCashTotal = dayClosures.reduce((acc, b) => acc + b.afternoonAmount, 0) - dayTerminals.filter(t => t.shift === 'afternoon').reduce((acc, t) => acc + t.amount, 0) - dayExtras.filter(e => e.shift === 'afternoon' && e.type === 'gasto').reduce((acc, e) => acc + e.amount, 0) - dayExtras.filter(e => e.shift === 'afternoon' && e.type === 'garantia').reduce((acc, e) => acc + e.amount, 0) - dayPayments.filter(p => p.shift === 'afternoon').reduce((acc, p) => acc + p.amount, 0);
+
+                const morningSales = detailByBranch.reduce((acc, b) => acc + b.morning, 0);
+                const morningDeductions = dayPayments.filter(p => p.shift === 'morning').reduce((acc, p) => acc + p.amount, 0) +
+                                         dayExtras.filter(e => e.shift === 'morning').reduce((acc, e) => acc + e.amount, 0);
+                const morningTerminals = dayTerminals.filter(t => t.shift === 'morning').reduce((acc, t) => acc + t.amount, 0);
+                const morningCashTotal = morningSales - morningDeductions - morningTerminals;
+
+                const afternoonSales = detailByBranch.reduce((acc, b) => acc + b.afternoon, 0);
+                const afternoonDeductions = dayPayments.filter(p => p.shift === 'afternoon').reduce((acc, p) => acc + p.amount, 0) +
+                                           dayExtras.filter(e => e.shift === 'afternoon').reduce((acc, e) => acc + e.amount, 0);
+                const afternoonTerminals = dayTerminals.filter(t => t.shift === 'afternoon').reduce((acc, t) => acc + t.amount, 0);
+                const afternoonCashTotal = afternoonSales - afternoonDeductions - afternoonTerminals;
+
                 const groupedExtras = dayExtras.reduce((acc, e) => {
                     const key = e.type === 'gasto' ? e.description : 'Garantía';
                     if (!acc[key]) acc[key] = { amount: 0, type: e.type };
                     acc[key].amount += e.amount;
                     return acc;
                 }, {});
+                
                 const paymentsBySeller = Object.values(dayPayments.reduce((acc, p) => {
                     const seller = sellers.find(s => s.id === p.sellerId);
                     if (!acc[p.sellerId]) acc[p.sellerId] = { name: seller ? seller.name : 'Desconocido', amount: 0 };
                     acc[p.sellerId].amount += p.amount;
                     return acc;
                 }, {})).filter(p => p.amount > 0);
+
                 return { 
                     date: selectedDate, detailByBranch, paymentsBySeller, totalGross, totalPayments, totalGastos, 
-                    totalGarantias, totalDeductions, totalDay, totalTerminals, totalCash, morningCashTotal, 
-                    afternoonCashTotal, groupedExtras 
+                    totalGarantias, totalDeductions, totalDay, totalTerminals, totalCash, groupedExtras,
+                    morningCashTotal, afternoonCashTotal
                 };
             }, [selectedDate, sales, branchClosures, payments, terminalEntries, extraExpenses, activeBranches, sellers]);
 
             const formatCurrency = (val) => Math.round(val).toLocaleString();
+
+            const getFormattedDateLong = (dateStr) => {
+                const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+                const d = new Date(dateStr + 'T12:00:00');
+                const dayName = days[d.getDay()];
+                const dayNum = String(d.getDate()).padStart(2, '0');
+                const monthName = months[d.getMonth()];
+                const year = d.getFullYear();
+                return `${dayName} ${dayNum} de ${monthName} de ${year}`;
+            };
+
+            const copySummaryText = () => {
+                const s = summaryData;
+                let text = `${getFormattedDateLong(s.date)}\n\n`;
+                
+                s.detailByBranch.forEach(b => {
+                    text += `${b.name}: $${formatCurrency(b.total)}\n`;
+                });
+                text += `TOTAL VENTAS: $${formatCurrency(s.totalGross)}\n\n`;
+                
+                s.paymentsBySeller.forEach(p => {
+                    text += `Pago ${p.name}: $${formatCurrency(p.amount)}\n`;
+                });
+                
+                Object.entries(s.groupedExtras).forEach(([k, d]) => {
+                    if (d.amount > 0) {
+                        text += `${k}: $${formatCurrency(d.amount)}\n`;
+                    }
+                });
+                text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n`;
+                
+                text += `TOTAL DÍA: $${formatCurrency(s.totalDay)}\n`;
+                text += `TOTAL TERMINALES: $${formatCurrency(s.totalTerminals)}\n`;
+                text += `TOTAL EFECTIVO: $${formatCurrency(s.totalCash)}`;
+                
+                navigator.clipboard.writeText(text);
+                alert('Resumen detallado copiado al portapapeles');
+            };
 
             const VisualPreview = ({ source, size = "12", hasCalculated = false, onClick }) => {
                 const borderClass = hasCalculated ? 'ring-4 ring-emerald-500 ring-offset-2' : '';
@@ -430,12 +459,6 @@
 
             const calculateComs = (id, s, e) => sales.filter(sa => sa.sellerId === id && sa.date >= s && sa.date <= e).reduce((acc, curr) => acc + (curr.commission || 0), 0);
             const calculatePrevPmts = (id, s, e) => payments.filter(p => p.sellerId === id && p.date >= s && p.date <= e && p.amount > 0).reduce((acc, curr) => acc + curr.amount, 0);
-
-            const copySummaryText = () => {
-                const text = `RESUMEN ${summaryData.date}\nVENTAS: $${formatCurrency(summaryData.totalGross)}\nDEDUCCIONES: $${formatCurrency(summaryData.totalDeductions)}\nTOTAL DÍA: $${formatCurrency(summaryData.totalDay)}\nEFECTIVO: $${formatCurrency(summaryData.totalCash)}`;
-                navigator.clipboard.writeText(text);
-                alert('Resumen copiado al portapapeles');
-            };
 
             return (
                 <div className={`min-h-screen pb-24 ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} flex flex-col transition-colors duration-500`}>
@@ -523,6 +546,17 @@
 
                         {view === 'closure' && (
                             <div className="space-y-4 animate-in">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/50' : 'bg-yellow-100 border-yellow-200'} shadow-sm text-center`}>
+                                        <p className="text-[10px] font-black uppercase text-yellow-600 dark:text-yellow-400 mb-1 tracking-wider">Efectivo Mañana</p>
+                                        <p className="text-2xl font-black text-yellow-700 dark:text-yellow-500 leading-none">$ {formatCurrency(summaryData.morningCashTotal)}</p>
+                                    </div>
+                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-blue-900/30 border-blue-700/50' : 'bg-blue-100 border-blue-200'} shadow-sm text-center`}>
+                                        <p className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Efectivo Tarde</p>
+                                        <p className="text-2xl font-black text-blue-700 dark:text-blue-500 leading-none">$ {formatCurrency(summaryData.afternoonCashTotal)}</p>
+                                    </div>
+                                </div>
+
                                 {activeBranches.map(br => (
                                     <div key={br.id} className={`${cardBg} p-4 rounded-2xl shadow-sm border`}>
                                         <div className="flex items-center gap-3 mb-4"><VisualPreview source={br.image} size="10" /><h3 className={`font-black ${getThemeClass('text')} uppercase`}>{br.name}</h3></div>
@@ -565,14 +599,13 @@
                                         ))}
                                     </div>
                                 </div>
-                                <button onClick={() => setView('summary')} className={`w-full py-4 mt-2 rounded-2xl ${getThemeClass('btn')} text-white font-black uppercase text-sm shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95`}><Icon name="LayoutDashboard" size={20} /> VER RESUMEN FINAL</button>
                             </div>
                         )}
 
                         {view === 'summary' && (
                             <div className="space-y-4 animate-in">
                                 <div onClick={copySummaryText} className={`${cardBg} p-6 rounded-3xl shadow-xl border cursor-pointer active:scale-[0.98] transition-all`}>
-                                    <div className="flex justify-between items-center mb-6"><h2 className={`font-black text-2xl ${getThemeClass('text')}`}>{summaryData.date}</h2><Icon name="Download" size={20} className={getThemeClass('text')} /></div>
+                                    <div className="flex justify-between items-center mb-6"><h2 className={`font-black text-2xl ${getThemeClass('text')}`}>{summaryData.date}</h2><Icon name="Copy" size={20} className={getThemeClass('text')} /></div>
                                     <div className="space-y-4">
                                         <div><h3 className="text-[10px] font-black uppercase text-gray-400 mb-2 border-b">Sucursales</h3>
                                             {summaryData.detailByBranch.map((b, i) => (<div key={i} className="flex justify-between text-sm py-1 border-b border-gray-50"><span className="text-gray-500">{b.name}</span><span className="font-black">$ {formatCurrency(b.total)}</span></div>))}
