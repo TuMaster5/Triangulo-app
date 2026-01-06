@@ -41,6 +41,7 @@
         const { useState, useEffect, useMemo, useRef } = React;
 
         // --- CONFIGURACIÓN DE SUPABASE ---
+        // Asegúrate de que estas credenciales sean correctas
         const SUPABASE_URL = 'https://gpkiboiatmshvwmwdnqx.supabase.co'; 
         const SUPABASE_KEY = 'sb_publishable_hyl_Srp08L9DdwCBG7Fd-g_QX9qRUfU';
         
@@ -139,6 +140,7 @@
             const fileInputRef = useRef(null);
             const photoInputRef = useRef(null);
             const [targetIdForPhoto, setTargetIdForPhoto] = useState(null);
+            const statusTimeoutRef = useRef(null);
 
             // Cargar datos al iniciar
             useEffect(() => {
@@ -190,10 +192,11 @@
             };
 
             const persistData = async () => {
-                // Si la app está cargando datos por primera vez, no guardar
                 if (sellers.length === 0) return;
-
+                
+                if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
                 setSaveStatus('loading');
+                
                 const dataToSave = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, theme, isDarkMode };
                 localStorage.setItem('vendas_app_data', JSON.stringify(dataToSave));
 
@@ -202,17 +205,20 @@
                         const { error } = await supabase
                             .from('app_data')
                             .insert([{ content: dataToSave }]);
+                        
                         if (error) throw error;
                         setSaveStatus('success');
                     } catch (e) {
-                        console.error("Error guardando en Supabase:", e);
+                        // Mejora de logs para evitar [object Object]
+                        const errorMsg = e?.message || (typeof e === 'string' ? e : JSON.stringify(e));
+                        console.error("Error guardando en Supabase:", errorMsg);
                         setSaveStatus('error');
                     }
                 } else {
                     setSaveStatus('success');
                 }
-                // Mantener el estado de éxito un momento y luego volver a idle para permitir nuevos disparos visuales
-                setTimeout(() => setSaveStatus('idle'), 2000);
+                
+                statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
             };
 
             // Efecto para auto-guardado con debounce
@@ -220,7 +226,7 @@
                 if (sellers.length === 0) return;
                 const timer = setTimeout(() => {
                     persistData();
-                }, 1000); // 1 segundo de calma antes de subir a la nube
+                }, 1500); 
                 return () => clearTimeout(timer);
             }, [sales, payments, branchClosures, terminalEntries, extraExpenses, sellers, branches, terminals, theme, isDarkMode]);
 
@@ -265,8 +271,6 @@
             const activeBranches = useMemo(() => branches.filter(b => b.active).sort((a,b) => a.order - b.order), [branches]);
             const activeTerminals = useMemo(() => terminals.filter(t => t.active).sort((a,b) => a.order - b.order), [terminals]);
 
-            // Ordenamiento dinámico solicitado para Mañana y Tarde
-            // Mayor valor arriba, $0 cuenta como registro (va antes que los vacíos).
             const sortedSellersForSales = useMemo(() => {
                 const shift = (view === 'morning' || view === 'afternoon') ? view : null;
                 if (!shift) return activeSellers;
@@ -278,15 +282,9 @@
                     const hasA = entryA !== undefined;
                     const hasB = entryB !== undefined;
                     
-                    // Si ambos tienen registro (incluyendo $0), ordenar por monto descendente
-                    if (hasA && hasB) {
-                        return entryB.amount - entryA.amount;
-                    }
-                    // Priorizar el que tiene registro sobre el que no
+                    if (hasA && hasB) return entryB.amount - entryA.amount;
                     if (hasA) return -1;
                     if (hasB) return 1;
-                    
-                    // Si ninguno tiene registro, orden original
                     return a.order - b.order;
                 });
             }, [activeSellers, sales, selectedDate, view]);
@@ -300,7 +298,7 @@
 
             const handleSaleChange = (sellerId, shift, value) => {
                 const amount = parseFloat(value) || 0;
-                setSaveStatus('loading'); // Encendido inmediato del triángulo
+                setSaveStatus('loading');
                 setSales(prev => {
                     const existing = prev.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
                     const filtered = prev.filter(s => !(s.date === selectedDate && s.sellerId === sellerId && s.shift === shift));
@@ -443,7 +441,6 @@
                 <div className={`min-h-screen pb-24 ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} flex flex-col transition-colors duration-500`}>
                     <header className={`${getThemeClass('bg')} ${getThemeClass('headerText')} p-4 shadow-sm sticky top-0 z-50 flex justify-between items-center transition-colors duration-300`}>
                         <div className="flex items-center gap-3">
-                            {/* Ícono del Triángulo con estados de guardado: Carga (Pulso), Éxito (Verde claro), Error (Rojo) */}
                             <div onClick={persistData} className={`w-8 h-8 bg-white/60 rounded-lg flex items-center justify-center shadow-sm cursor-pointer transition-all active:scale-90 relative`}>
                                 <Icon name="Triangle" size={20} fill="currentColor" 
                                     className={
