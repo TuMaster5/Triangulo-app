@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TRIANGULO APP 14.1 - Cloud Sync</title>
+    <title>TRIANGULO APP 12.0 - Cloud Sync</title>
     <!-- Librerías Externas via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -55,8 +55,18 @@
         .triangle-flash-error { animation: flash-error 1s ease-out forwards; color: #fca5a5 !important; }
         .triangle-growing { animation: grow-save 1s ease-in-out infinite; color: #6366f1 !important; }
 
-        .pin-dot { transition: all 0.2s ease; }
-        .pin-dot-active { transform: scale(1.3); background-color: currentColor; }
+        .pin-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        .pin-dot.active {
+            background-color: #6366f1;
+            border-color: #6366f1;
+            transform: scale(1.2);
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-500">
@@ -66,7 +76,7 @@
         const { useState, useEffect, useMemo, useRef } = React;
 
         // --- CONSTANTES ---
-        const DEFAULT_USER = { id: 'admin-1', name: 'Julian', profile: 'Administrador', pin: '279279', active: true };
+        const DEFAULT_ADMIN = { id: 'default-admin', name: 'Julian', role: 'Administrador', pin: '279279', order: 0 };
 
         // --- FUNCIONES DE UTILIDAD GLOBALES ---
         const getDayOfWeek = (dateStr) => {
@@ -111,7 +121,63 @@
             );
         };
 
-        const Navigation = ({ currentView, setView, theme }) => {
+        const LoginScreen = ({ users, onLogin, theme, isDarkMode, themeColors }) => {
+            const [pin, setPin] = useState('');
+            const [error, setError] = useState(false);
+
+            const handlePinPress = (digit) => {
+                if (pin.length < 6) {
+                    const newPin = pin + digit;
+                    setPin(newPin);
+                    if (newPin.length === 6) {
+                        const matchedUser = users.find(u => u.pin === newPin);
+                        if (matchedUser) {
+                            onLogin(matchedUser);
+                        } else {
+                            setError(true);
+                            setTimeout(() => {
+                                setError(false);
+                                setPin('');
+                            }, 1000);
+                        }
+                    }
+                }
+            };
+
+            const cardBg = isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100';
+
+            return (
+                <div className="fixed inset-0 z-[100] bg-gray-50 dark:bg-gray-950 flex flex-col items-center p-6 animate-in">
+                    <div className="flex flex-col items-center mt-12 mb-10 text-center">
+                        <LucideIcon name="triangle" size={60} className="text-indigo-500 mb-4" fill="currentColor" />
+                        <h1 className="text-3xl font-black tracking-tighter">TRIANGULO APP</h1>
+                        <p className="text-xs font-black uppercase opacity-50 mt-4 mb-8">Ingresa PIN de acceso</p>
+                        <div className={`flex gap-3 mb-6 ${error ? 'animate-bounce text-rose-500' : ''}`}>
+                            {[...Array(6)].map((_, i) => (
+                                <div key={i} className={`pin-dot ${pin.length > i ? 'active' : ''} ${error ? 'border-rose-500' : ''}`} />
+                            ))}
+                        </div>
+                        {error && <p className="text-rose-500 text-[10px] font-black uppercase">PIN Incorrecto</p>}
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 max-w-[280px] w-full mt-auto mb-10">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => (
+                            <button key={d} onClick={() => handlePinPress(d.toString())} className={`h-16 rounded-2xl ${cardBg} border font-black text-2xl shadow-sm active:bg-indigo-500 active:text-white transition-all`}>
+                                {d}
+                            </button>
+                        ))}
+                        <button className="h-16 rounded-2xl opacity-0">0</button>
+                        <button onClick={() => handlePinPress('0')} className={`h-16 rounded-2xl ${cardBg} border font-black text-2xl shadow-sm active:bg-indigo-500 active:text-white transition-all`}>
+                            0
+                        </button>
+                        <button onClick={() => setPin(pin.slice(0, -1))} className={`h-16 rounded-2xl ${cardBg} border flex items-center justify-center shadow-sm active:bg-rose-500 active:text-white transition-all`}>
+                            <LucideIcon name="delete" size={24} />
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const Navigation = ({ currentView, setView, theme, currentUser }) => {
             const themeColorsMap = {
                 indigo: { text: 'text-indigo-600', activeBg: 'bg-indigo-50' },
                 emerald: { text: 'text-emerald-600', activeBg: 'bg-emerald-50' },
@@ -157,21 +223,20 @@
         };
 
         const App = () => {
-            // --- ESTADO AUTH ---
-            const [currentUser, setCurrentUser] = useState(null);
-            const [users, setUsers] = useState([DEFAULT_USER]);
-            const [loginPin, setLoginPin] = useState('');
-            const [loginError, setLoginError] = useState(false);
-            const [showUserModal, setShowUserModal] = useState(false);
-            const [tempUser, setTempUser] = useState({ id: null, name: '', profile: 'Capturista', pin: '' });
-
-            // --- ESTADO APP ---
+            // --- ESTADO ---
             const [view, setView] = useState('morning');
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
             const [theme, setTheme] = useState('indigo');
             const [isDarkMode, setIsDarkMode] = useState(false);
             const [saveStatus, setSaveStatus] = useState('idle');
             
+            // Usuarios
+            const [users, setUsers] = useState([DEFAULT_ADMIN]);
+            const [currentUser, setCurrentUser] = useState(null);
+            const [newUser, setNewUser] = useState({ name: '', role: 'Capturista', pin: '' });
+            const [editingUserId, setEditingUserId] = useState(null);
+            const [showUserForm, setShowUserForm] = useState(false);
+
             const [sellers, setSellers] = useState([]);
             const [branches, setBranches] = useState([]);
             const [terminals, setTerminals] = useState([]);
@@ -204,6 +269,11 @@
             const photoInputRef = useRef(null);
             const [targetIdForPhoto, setTargetIdForPhoto] = useState(null);
 
+            // --- PERMISOS ---
+            const isAdmin = currentUser?.role === 'Administrador';
+            const isCapturista = currentUser?.role === 'Capturista';
+            const isEspectador = currentUser?.role === 'Espectador';
+
             // --- CONFIGURACIÓN DE TEMA ---
             const themeColors = useMemo(() => ({
                 indigo: { bg: 'bg-indigo-50', text: 'text-indigo-500', border: 'border-indigo-100', btn: 'bg-indigo-500 hover:bg-indigo-600', ring: 'ring-indigo-200', headerText: 'text-indigo-700', dot: 'bg-indigo-500' },
@@ -220,12 +290,7 @@
 
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
-            }, [view, selectedDate, showSecretModal, secretTab, commissionModal, paymentCalcModal, conceptModal, currentUser, showUserModal]);
-
-            // Permisos
-            const isEspectador = currentUser?.profile === 'Espectador';
-            const isCapturista = currentUser?.profile === 'Capturista';
-            const isAdmin = currentUser?.profile === 'Administrador';
+            }, [view, selectedDate, showSecretModal, secretTab, commissionModal, paymentCalcModal, conceptModal, currentUser, showUserForm, editingUserId]);
 
             // Determinar si es último día de mes
             const isLastDayOfMonth = useMemo(() => {
@@ -237,6 +302,7 @@
 
             // --- UTILITIES DE ESTADO ---
             const applyData = (p) => {
+                if (p.users) setUsers(p.users.length > 0 ? p.users : [DEFAULT_ADMIN]);
                 if (p.sellers) setSellers(p.sellers); 
                 if (p.branches) setBranches(p.branches); 
                 if (p.terminals) setTerminals(p.terminals);
@@ -248,7 +314,6 @@
                 if (p.investments) setInvestments(p.investments);
                 if (p.rents) setRents(p.rents);
                 if (p.terminalCommissions) setTerminalCommissions(p.terminalCommissions);
-                if (p.users) setUsers(p.users);
                 if (p.theme) setTheme(p.theme); 
                 if (p.isDarkMode !== undefined) {
                     setIsDarkMode(p.isDarkMode);
@@ -257,9 +322,18 @@
                 }
             };
 
-            const activeSellers = useMemo(() => sellers.filter(s => s.active).sort((a,b) => a.order - b.order), [sellers]);
-            const activeBranches = useMemo(() => branches.filter(b => b.active).sort((a,b) => a.order - b.order), [branches]);
-            const activeTerminals = useMemo(() => terminals.filter(t => t.active).sort((a,b) => a.order - b.order), [terminals]);
+            const activeBranches = useMemo(() => branches.filter(b => b.active).sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name)), [branches]);
+            const activeTerminals = useMemo(() => terminals.filter(t => t.active).sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name)), [terminals]);
+
+            // Vendedores visibles hoy (activos o inactivos con datos hoy)
+            const visibleSellers = useMemo(() => {
+                return sellers.filter(s => {
+                    if (s.active) return true;
+                    const hasSale = sales.some(sa => sa.date === selectedDate && sa.sellerId === s.id && (sa.amount || 0) > 0);
+                    const hasPayment = payments.some(p => p.date === selectedDate && p.sellerId === s.id && (p.amount || 0) > 0);
+                    return hasSale || hasPayment;
+                }).sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
+            }, [sellers, sales, payments, selectedDate]);
 
             const summaryData = useMemo(() => {
                 const daySales = sales.filter(s => s.date === selectedDate);
@@ -319,7 +393,7 @@
                 };
             }, [selectedDate, sales, branchClosures, payments, terminalEntries, extraExpenses, investments, activeBranches, sellers]);
 
-            // Inversiones del mes
+            // Inversiones del mes - Ordenadas de la más antigua (arriba) a la más reciente (abajo)
             const monthInvestments = useMemo(() => {
                 const [year, month] = selectedDate.split('-');
                 return investments.filter(i => {
@@ -337,8 +411,8 @@
 
             const sortedSellersLocal = useMemo(() => {
                 const shift = (view === 'morning' || view === 'afternoon') ? view : null;
-                if (!shift) return activeSellers;
-                return [...activeSellers].sort((a, b) => {
+                if (!shift) return visibleSellers;
+                return [...visibleSellers].sort((a, b) => {
                     const entryA = sales.find(s => s.date === selectedDate && s.sellerId === a.id && s.shift === shift);
                     const entryB = sales.find(s => s.date === selectedDate && s.sellerId === b.id && s.shift === shift);
                     const valA = entryA !== undefined ? entryA.amount : -1;
@@ -346,9 +420,9 @@
                     if (valA !== -1 && valB !== -1) return valB - valA;
                     if (valA !== -1) return -1;
                     if (valB !== -1) return 1;
-                    return a.order - b.order;
+                    return (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name);
                 });
-            }, [activeSellers, sales, selectedDate, view]);
+            }, [visibleSellers, sales, selectedDate, view]);
 
             // --- CALCULOS DE COMISIONES ---
             const calculateComs = (id, s, e) => sales.filter(sa => sa.sellerId === id && sa.date >= s && sa.date <= e).reduce((acc, curr) => acc + (curr.commission || 0), 0);
@@ -382,6 +456,7 @@
                     const localData = localStorage.getItem('vendas_app_data');
                     if (localData) applyData(JSON.parse(localData));
                     else {
+                        setUsers([DEFAULT_ADMIN]);
                         setSellers([{ id: '1', name: 'Vendedor 1', active: true, order: 0 }]);
                         setBranches([{ id: '1', name: 'Central', active: true, order: 0 }]);
                         setTerminals([{ id: '1', name: 'Terminal A', active: true, order: 0 }]);
@@ -402,7 +477,7 @@
             const persistData = async () => {
                 if (sellers.length === 0) return;
                 setSaveStatus('loading');
-                const dataToSave = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, investments, rents, terminalCommissions, users, theme, isDarkMode };
+                const dataToSave = { users, sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, investments, rents, terminalCommissions, theme, isDarkMode };
                 localStorage.setItem('vendas_app_data', JSON.stringify(dataToSave));
                 if (supabaseClient) {
                     try {
@@ -416,11 +491,11 @@
             useEffect(() => {
                 const timer = setTimeout(() => { if(sellers.length > 0) persistData(); }, 1500);
                 return () => clearTimeout(timer);
-            }, [sales, payments, branchClosures, terminalEntries, extraExpenses, investments, rents, terminalCommissions, sellers, branches, terminals, users, theme, isDarkMode]);
+            }, [users, sales, payments, branchClosures, terminalEntries, extraExpenses, investments, rents, terminalCommissions, sellers, branches, terminals, theme, isDarkMode]);
 
             // --- HANDLERS ---
             const handleHeaderClick = () => {
-                if (isCapturista) return;
+                if (isCapturista) return; // Capturista no ve menú secreto
                 const now = Date.now();
                 if (now - lastHeaderClick < 500) {
                     const newCount = headerClicks + 1;
@@ -434,8 +509,7 @@
             };
 
             const addInvestment = () => {
-                if (isEspectador) return;
-                if (!newInvestment.concept || !newInvestment.amount) return;
+                if (isEspectador || !newInvestment.concept || !newInvestment.amount) return;
                 const entry = {
                     id: Date.now().toString(),
                     date: selectedDate,
@@ -493,6 +567,74 @@
                 alert('Reporte de inversiones mensual copiado.');
             };
 
+            // --- GESTIÓN DE USUARIOS ---
+            const saveUser = () => {
+                if (!newUser.name || newUser.pin.length !== 6) {
+                    alert('Nombre requerido y PIN debe ser de 6 dígitos.');
+                    return;
+                }
+
+                if (editingUserId) {
+                    setUsers(prev => prev.map(u => u.id === editingUserId ? { ...newUser, id: editingUserId } : u));
+                    setEditingUserId(null);
+                    alert('Usuario actualizado.');
+                } else {
+                    const exists = users.find(u => u.name.toLowerCase() === newUser.name.toLowerCase());
+                    if (exists) {
+                        alert('El usuario ya existe.');
+                        return;
+                    }
+                    const entry = { ...newUser, id: Date.now().toString(), order: users.length };
+                    setUsers(prev => [...prev, entry]);
+                    alert('Usuario creado.');
+                }
+                setNewUser({ name: '', role: 'Capturista', pin: '' });
+                setShowUserForm(false);
+            };
+
+            const handleEditUser = (user) => {
+                setEditingUserId(user.id);
+                setNewUser({ name: user.name, role: user.role, pin: user.pin });
+                setShowUserForm(true);
+            };
+
+            const deleteUser = (id) => {
+                if (id === 'default-admin') {
+                    alert('No se puede eliminar el administrador principal.');
+                    return;
+                }
+                if (confirm('¿Eliminar usuario?')) {
+                    setUsers(prev => prev.filter(u => u.id !== id));
+                    if (editingUserId === id) {
+                        setEditingUserId(null);
+                        setNewUser({ name: '', role: 'Capturista', pin: '' });
+                        setShowUserForm(false);
+                    }
+                }
+            };
+
+            const handleMove = (type, id, direction) => {
+                let list, setList;
+                if (type === 'user') { list = users; setList = setUsers; }
+                else if (type === 'seller') { list = sellers; setList = setSellers; }
+                else if (type === 'branch') { list = branches; setList = setBranches; }
+                else if (type === 'terminal') { list = terminals; setList = setTerminals; }
+
+                const sortedList = [...list].sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name));
+                const index = sortedList.findIndex(item => item.id === id);
+                const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+                if (targetIndex >= 0 && targetIndex < sortedList.length) {
+                    const result = sortedList.map((item, i) => {
+                        let newPos = i;
+                        if (i === index) newPos = targetIndex;
+                        else if (i === targetIndex) newPos = index;
+                        return { ...item, order: newPos };
+                    });
+                    setList(result);
+                }
+            };
+
             // --- EXPORTAR EXCEL ---
             const exportToExcel = async () => {
                 const [year, month] = selectedDate.split('-').map(Number);
@@ -505,8 +647,15 @@
                 const sheet = workbook.addWorksheet(`${currentMonthName} ${year}`);
                 
                 const activeBr = activeBranches;
-                const activeSells = [...activeSellers].sort((a,b) => a.name.localeCompare(b.name));
                 const activeTerms = activeTerminals;
+
+                // Vendedores del reporte mensual: activos o inactivos con actividad (ventas o pagos) este mes
+                const activeSells = sellers.filter(s => {
+                    if (s.active) return true;
+                    const hasPaymentsMonth = payments.some(p => p.sellerId === s.id && p.date.startsWith(monthKey) && (p.amount || 0) > 0);
+                    const hasSalesMonth = sales.some(sa => sa.sellerId === s.id && sa.date.startsWith(monthKey) && (sa.amount || 0) > 0);
+                    return hasPaymentsMonth || hasSalesMonth;
+                }).sort((a,b) => a.name.localeCompare(b.name));
                 
                 const headerStyleBase = { font: { bold: true, size: 9 }, alignment: { horizontal: 'center', vertical: 'middle' }, border: { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } } };
                 const pastelGreen = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'D9EAD3' } }; 
@@ -670,10 +819,7 @@
                     const cellTotal = totalRow.getCell(i);
                     const isSpacer = (i === activeBr.length + 9 + activeTerms.length + 1);
                     const isAverageTotal = (i === activeBr.length + 3);
-                    if (isSpacer || isAverageTotal) {
-                         cellTotal.value = "";
-                         continue;
-                    }
+                    if (isSpacer || isAverageTotal) { cellTotal.value = ""; continue; }
                     cellTotal.value = { formula: `SUM(${colLetter}3:${colLetter}${totalRowIdx-1})` };
                     cellTotal.fill = darkGrayPastel;
                     cellTotal.font = { color: { argb: 'FFFFFF' }, bold: true, size: 9 };
@@ -728,12 +874,7 @@
                     c.font = { size: 9 };
                 }
 
-                sheet.columns.forEach((col, idx) => {
-                    if (idx + 1 > totalSalSellsCol) {
-                        col.eachCell(cell => { cell.border = {}; });
-                    }
-                });
-
+                sheet.columns.forEach((col, idx) => { if (idx + 1 > totalSalSellsCol) col.eachCell(cell => { cell.border = {}; }); });
                 sheet.columns.forEach(col => { col.width = 11; });
                 sheet.getColumn(1).width = 5;
 
@@ -776,6 +917,18 @@
                 });
             };
 
+            const handleBranchClosureTotalChange = (branchId, value) => {
+                if (isEspectador) return;
+                const totalAmount = parseFloat(value.replace(/,/g, '')) || 0;
+                setBranchClosures(prev => {
+                    const existing = prev.find(b => b.date === selectedDate && b.branchId === branchId) || { morningAmount: 0, afternoonAmount: 0 };
+                    const morning = existing.morningAmount || 0;
+                    const newAfternoon = totalAmount - morning;
+                    const filtered = prev.filter(b => !(b.date === selectedDate && b.branchId === branchId));
+                    return [...filtered, { ...existing, date: selectedDate, branchId, afternoonAmount: newAfternoon }];
+                });
+            };
+
             const handleTerminalChange = (terminalId, shift, value) => {
                 if (isEspectador) return;
                 const amount = parseFloat(value.replace(/,/g, '')) || 0;
@@ -793,12 +946,12 @@
             };
 
             const openCommissionModal = (sellerId, shift) => {
-                if (isEspectador) return;
                 const entry = sales.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
                 setCommissionModal({ show: true, sellerId, shift, tempType: entry?.commissionType || 'none', tempM20: entry?.mixto20 || 0, tempM25: entry?.mixto25 || 0 });
             };
 
             const saveCommission = () => {
+                if (isEspectador) return;
                 const { sellerId, shift, tempType, tempM20, tempM25 } = commissionModal;
                 setSales(prev => {
                     const existing = prev.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift);
@@ -815,6 +968,7 @@
             };
 
             const saveConcept = () => {
+                if (isEspectador) return;
                 const { type, tempDescription } = conceptModal;
                 const conceptToSave = tempDescription || (type === 'gasto' ? 'Gasto' : 'Garantía');
                 setExtraExpenses(prev => prev.map(e => (e.date === selectedDate && e.type === type) ? { ...e, description: conceptToSave } : e));
@@ -837,7 +991,7 @@
             };
 
             const exportBackup = () => {
-                const data = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, investments, rents, terminalCommissions, users, theme, isDarkMode };
+                const data = { users, sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, investments, rents, terminalCommissions, theme, isDarkMode };
                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                 const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `respaldo_triangulo_${selectedDate}.json`; link.click();
             };
@@ -850,82 +1004,13 @@
                 }; reader.readAsText(file);
             };
 
-            const handleLogin = (val) => {
-                const userFound = users.find(u => u.pin === val && u.active);
-                if (userFound) {
-                    setCurrentUser(userFound);
-                    setLoginPin('');
-                    setLoginError(false);
-                } else {
-                    setLoginPin('');
-                    setLoginError(true);
-                    setTimeout(() => setLoginError(false), 1000);
-                }
-            };
-
-            const handlePinClick = (num) => {
-                if (loginPin.length < 6) {
-                    const newVal = loginPin + num;
-                    setLoginPin(newVal);
-                    if (newVal.length === 6) handleLogin(newVal);
-                }
-            };
-
-            const saveUser = () => {
-                if (tempUser.name && tempUser.pin.length === 6) {
-                    if (tempUser.id) {
-                        // Modo edición
-                        setUsers(prev => prev.map(u => u.id === tempUser.id ? { ...u, name: tempUser.name, profile: tempUser.profile, pin: tempUser.pin } : u));
-                    } else {
-                        // Modo creación
-                        const newUser = { ...tempUser, id: Date.now().toString(), active: true };
-                        setUsers(prev => [...prev, newUser]);
-                    }
-                    setTempUser({ id: null, name: '', profile: 'Capturista', pin: '' });
-                    setShowUserModal(false);
-                } else {
-                    alert('Complete todos los campos. El PIN debe ser de 6 dígitos.');
-                }
-            };
-
-            const editUser = (user) => {
-                setTempUser({ id: user.id, name: user.name, profile: user.profile, pin: user.pin });
-                setShowUserModal(true);
-            };
-
-            // --- RENDER LOGIN ---
-            if (!currentUser) {
-                return (
-                    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 animate-in">
-                        <div className="mb-10 text-center">
-                            <LucideIcon name="triangle" size={64} className="text-indigo-500 mb-2 mx-auto" fill="currentColor" />
-                            <h1 className="text-3xl font-black tracking-tighter">TRIANGULO APP</h1>
-                            <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Acceso Seguro</p>
-                        </div>
-                        
-                        <div className="w-full max-w-xs space-y-8">
-                            <div className={`flex justify-center gap-3 ${loginError ? 'animate-pulse text-rose-500' : 'text-indigo-500'}`}>
-                                {[0,1,2,3,4,5].map(i => (
-                                    <div key={i} className={`w-4 h-4 rounded-full border-2 border-current pin-dot ${loginPin.length > i ? 'pin-dot-active' : ''}`} />
-                                ))}
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-4">
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                                    <button key={n} onClick={() => handlePinClick(n.toString())} className="h-16 w-16 mx-auto rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-2xl font-black hover:bg-gray-50 active:scale-90 transition-all">{n}</button>
-                                ))}
-                                <button onClick={() => setLoginPin('')} className="h-16 w-16 mx-auto rounded-full bg-rose-50 text-rose-500 flex items-center justify-center text-xl font-black active:scale-90 transition-all"><LucideIcon name="x" size={24}/></button>
-                                <button onClick={() => handlePinClick('0')} className="h-16 w-16 mx-auto rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-2xl font-black hover:bg-gray-50 active:scale-90 transition-all">0</button>
-                                <button onClick={() => setLoginPin(loginPin.slice(0, -1))} className="h-16 w-16 mx-auto rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center text-xl font-black active:scale-90 transition-all"><LucideIcon name="delete" size={24}/></button>
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
             // --- RENDER HELPERS ---
             const cardBgClass = isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100';
             const inputBgClass = isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-700';
+
+            if (!currentUser) {
+                return <LoginScreen users={users} onLogin={setCurrentUser} theme={theme} isDarkMode={isDarkMode} themeColors={themeColors} />;
+            }
 
             return (
                 <div className={`min-h-screen pb-24 ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} flex flex-col transition-colors duration-500`}>
@@ -936,15 +1021,20 @@
                                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                                 </svg>
                             </div>
-                            <h1 onClick={handleHeaderClick} className="text-xl font-black tracking-tighter select-none cursor-pointer">TRIANGULO APP</h1>
+                            <div className="flex flex-col">
+                                <h1 onClick={handleHeaderClick} className="text-xl font-black tracking-tighter select-none cursor-pointer leading-tight">TRIANGULO APP</h1>
+                                <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest leading-none">{currentUser.name}</p>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex gap-2">
                             {isAdmin && (
                                 <button onClick={() => setView(view === 'settings' ? 'morning' : 'settings')} className={`p-2 rounded-full transition-all ${view === 'settings' ? 'bg-white ' + themeClass : 'bg-white/40'}`}>
                                     {view === 'settings' ? <LucideIcon name="x" size={22} /> : <LucideIcon name="settings" size={22} />}
                                 </button>
                             )}
-                            <button onClick={() => setCurrentUser(null)} className="p-2 bg-rose-50 text-rose-500 rounded-full hover:bg-rose-100 transition-all"><LucideIcon name="log-out" size={20}/></button>
+                            <button onClick={() => setCurrentUser(null)} className="p-2 rounded-full bg-white/40 hover:bg-white transition-all text-rose-500">
+                                <LucideIcon name="log-out" size={22} />
+                            </button>
                         </div>
                     </header>
 
@@ -955,6 +1045,13 @@
                             <div className="flex items-center gap-2">
                                 <LucideIcon name="calendar" size={14} className="text-sky-400" />
                                 <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-sm font-black focus:outline-none border-none cursor-pointer" />
+                                <button 
+                                    onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])} 
+                                    className={`ml-1 p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all ${themeClass}`}
+                                    title="Restablecer a hoy"
+                                >
+                                    <LucideIcon name="rotate-ccw" size={14} />
+                                </button>
                             </div>
                         </div>
                         <button onClick={() => { const d = new Date(selectedDate + 'T12:00:00'); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]); }} className={`p-2 ${themeClass}`}><LucideIcon name="chevron-right" size={24} /></button>
@@ -978,7 +1075,7 @@
                                                     <div className="flex flex-col"><span className="font-bold text-sm">{seller.name}</span>{entry?.commissionType && entry.commissionType !== 'none' && <span className="text-[10px] font-black text-emerald-500 uppercase">Com: ${formatCurrency(entry.commission)}</span>}</div>
                                                 </div>
                                                 <div className="relative"><span className={`absolute left-3 top-1/2 -translate-y-1/2 ${themeClass} font-bold opacity-60`}>$</span>
-                                                    <input type="text" inputMode="numeric" disabled={isEspectador} value={val === undefined || val === "" ? "" : formatCurrency(val)} onChange={(e) => handleSaleChange(seller.id, view, e.target.value.replace(/,/g, ''))} className={`w-28 pl-7 pr-3 py-2 ${inputBgClass} rounded-lg text-right font-black shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')} ${isEspectador ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                                                    <input type="text" inputMode="numeric" disabled={isEspectador} value={val === undefined || val === "" ? "" : formatCurrency(val)} onChange={(e) => handleSaleChange(seller.id, view, e.target.value.replace(/,/g, ''))} className={`w-28 pl-7 pr-3 py-2 ${inputBgClass} rounded-lg text-right font-black shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')} disabled:opacity-50`} />
                                                 </div>
                                             </div>
                                         );
@@ -992,11 +1089,10 @@
                                 <div className={`${cardBgClass} p-4 rounded-2xl shadow-sm border`}>
                                     <h2 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2">Pagos a Vendedores</h2>
                                     <div className="space-y-4">
-                                        {activeSellers.map(seller => (
+                                        {visibleSellers.map(seller => (
                                             <div key={seller.id} className={`p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-800' : 'bg-gray-50/50 border-gray-50'}`}>
                                                 <div className="flex items-center gap-3 mb-3">
                                                     <VisualPreview source={seller.image} size="10" hasCalculated={payments.some(p => p.date === selectedDate && p.sellerId === seller.id && p.calculated)} onClick={() => {
-                                                        if (isEspectador) return;
                                                         const start = new Date(selectedDate + 'T12:00:00'); start.setDate(start.getDate() - 6);
                                                         setPaymentCalcModal({ show: true, sellerId: seller.id, baseSalary: 0, startDate: start.toISOString().split('T')[0], endDate: selectedDate });
                                                     }} isDarkMode={isDarkMode} />
@@ -1008,7 +1104,7 @@
                                                             <span className="text-[9px] text-gray-400 font-bold uppercase ml-1">{shift === 'morning' ? 'Mañana' : 'Tarde'}</span>
                                                             <div className="relative">
                                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-300 font-bold text-xs">$</span>
-                                                                <input type="text" inputMode="numeric" disabled={isEspectador} value={getPaymentAmountLocal(seller.id, shift) ? formatCurrency(getPaymentAmountLocal(seller.id, shift)) : ''} onChange={(e) => handlePaymentChange(seller.id, shift, e.target.value.replace(/,/g, ''))} className={`w-full pl-6 pr-2 py-2 ${shift === 'morning' ? morningFieldBg : afternoonFieldBg} border border-rose-100 rounded-lg text-right font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400 ${isEspectador ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                                                                <input type="text" inputMode="numeric" disabled={isEspectador} value={getPaymentAmountLocal(seller.id, shift) ? formatCurrency(getPaymentAmountLocal(seller.id, shift)) : ''} onChange={(e) => handlePaymentChange(seller.id, shift, e.target.value.replace(/,/g, ''))} className={`w-full pl-6 pr-2 py-2 ${shift === 'morning' ? morningFieldBg : afternoonFieldBg} border border-rose-100 rounded-lg text-right font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400 disabled:opacity-50`} />
                                                             </div>
                                                         </div>
                                                     ))}
@@ -1028,11 +1124,22 @@
                             <div className="space-y-4 animate-in">
                                 {activeBranches.map(br => {
                                     const closure = getBranchClosureLocal(br.id);
+                                    const totalDisplay = closure.morningAmount + closure.afternoonAmount;
                                     return (
                                         <div key={br.id} className={`${cardBgClass} p-4 rounded-2xl shadow-sm border`}>
                                             <div className="flex justify-between items-center mb-4">
                                                 <div className="flex items-center gap-3"><VisualPreview source={br.image} size="10" isDarkMode={isDarkMode} /><h3 className={`font-black ${themeClass} uppercase`}>{br.name}</h3></div>
-                                                <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded">TOT: ${formatCurrency(closure.morningAmount + closure.afternoonAmount)}</span>
+                                                <div className={`flex items-center gap-1 px-2 py-1 rounded ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                                                    <span className="text-[9px] font-black uppercase opacity-50">Tot: $</span>
+                                                    <input 
+                                                        type="text" 
+                                                        inputMode="numeric"
+                                                        disabled={isEspectador}
+                                                        value={totalDisplay ? formatCurrency(totalDisplay) : ''}
+                                                        onChange={(e) => handleBranchClosureTotalChange(br.id, e.target.value)}
+                                                        className="bg-transparent text-[10px] font-black w-16 text-right outline-none focus:ring-0"
+                                                    />
+                                                </div>
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 {['morningAmount', 'afternoonAmount'].map(field => (
@@ -1040,7 +1147,7 @@
                                                         <label className="text-[10px] uppercase font-black text-gray-400">{field === 'morningAmount' ? 'Mañana' : 'Tarde'}</label>
                                                         <div className="relative">
                                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60">$</span>
-                                                            <input type="text" inputMode="numeric" disabled={isEspectador} value={closure[field] ? formatCurrency(closure[field]) : ''} onChange={(e) => handleBranchClosureChange(br.id, field, e.target.value.replace(/,/g, ''))} className={`w-full pl-7 pr-3 p-3 ${field === 'morningAmount' ? morningFieldBg : afternoonFieldBg} border rounded-xl font-black ${themeClass} shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')} ${isEspectador ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                                                            <input type="text" inputMode="numeric" disabled={isEspectador} value={closure[field] ? formatCurrency(closure[field]) : ''} onChange={(e) => handleBranchClosureChange(br.id, field, e.target.value.replace(/,/g, ''))} className={`w-full pl-7 pr-3 p-3 ${field === 'morningAmount' ? morningFieldBg : afternoonFieldBg} border rounded-xl font-black ${themeClass} shadow-inner outline-none focus:ring-2 ${getThemeClass('ring')} disabled:opacity-50`} />
                                                         </div>
                                                     </div>
                                                 ))}
@@ -1054,7 +1161,7 @@
                                     <div className="space-y-6">
                                         {['gasto', 'garantia'].map(type => (
                                             <div key={type}>
-                                                <div onClick={() => !isEspectador && setConceptModal({ show: true, type, tempDescription: extraExpenses.find(e => e.date === selectedDate && e.type === type)?.description || '' })} className={`text-[10px] uppercase text-rose-400 font-black flex items-center justify-between gap-1 mb-2 rounded p-1 w-full ${!isEspectador ? 'cursor-pointer hover:underline hover:bg-rose-50' : ''}`}>
+                                                <div onClick={() => !isEspectador && setConceptModal({ show: true, type, tempDescription: extraExpenses.find(e => e.date === selectedDate && e.type === type)?.description || '' })} className={`text-[10px] uppercase text-rose-400 font-black flex items-center justify-between gap-1 mb-2 ${!isEspectador ? 'cursor-pointer hover:underline' : ''} p-1 rounded hover:bg-rose-50 w-full`}>
                                                     <span className="flex items-center gap-1"><LucideIcon name={type === 'gasto' ? "receipt" : "shield-check"} size={12} /> {type === 'gasto' ? 'Gastos' : 'Garantías'}</span>
                                                     <span>Subtotal: ${formatCurrency(getExtraExpenseAmountLocal(type, 'morning') + getExtraExpenseAmountLocal(type, 'afternoon'))}</span>
                                                 </div>
@@ -1062,7 +1169,7 @@
                                                     {['morning', 'afternoon'].map(shift => (
                                                         <div key={shift} className="relative">
                                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-600 text-xs font-bold opacity-60">$</span>
-                                                            <input type="text" inputMode="numeric" disabled={isEspectador} value={getExtraExpenseAmountLocal(type, shift) ? formatCurrency(getExtraExpenseAmountLocal(type, shift)) : ''} onChange={(e) => handleExtraExpenseChange(type, shift, e.target.value.replace(/,/g, ''))} className={`w-full pl-7 pr-3 p-3 ${shift === 'morning' ? morningFieldBg : afternoonFieldBg} border-rose-200 border rounded-xl font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400 ${isEspectador ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                                                            <input type="text" inputMode="numeric" disabled={isEspectador} value={getExtraExpenseAmountLocal(type, shift) ? formatCurrency(getExtraExpenseAmountLocal(type, shift)) : ''} onChange={(e) => handleExtraExpenseChange(type, shift, e.target.value.replace(/,/g, ''))} className={`w-full pl-7 pr-3 p-3 ${shift === 'morning' ? morningFieldBg : afternoonFieldBg} border-rose-200 border rounded-xl font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-400 disabled:opacity-50`} />
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1084,7 +1191,7 @@
                                                     {['morning', 'afternoon'].map(shift => (
                                                         <div key={shift} className="relative">
                                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 text-xs font-bold opacity-60">$</span>
-                                                            <input type="text" inputMode="numeric" disabled={isEspectador} value={getTerminalAmountLocal(t.id, shift) ? formatCurrency(getTerminalAmountLocal(t.id, shift)) : ''} onChange={(e) => handleTerminalChange(t.id, shift, e.target.value.replace(/,/g, ''))} className={`w-full pl-7 pr-3 p-3 ${shift === 'morning' ? morningFieldBg : afternoonFieldBg} border-emerald-200 border rounded-xl font-black text-emerald-600 outline-none focus:ring-2 focus:ring-emerald-400 ${isEspectador ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                                                            <input type="text" inputMode="numeric" disabled={isEspectador} value={getTerminalAmountLocal(t.id, shift) ? formatCurrency(getTerminalAmountLocal(t.id, shift)) : ''} onChange={(e) => handleTerminalChange(t.id, shift, e.target.value.replace(/,/g, ''))} className={`w-full pl-7 pr-3 p-3 ${shift === 'morning' ? morningFieldBg : afternoonFieldBg} border-emerald-200 border rounded-xl font-black text-emerald-600 outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-50`} />
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1095,7 +1202,7 @@
 
                                 <div className="grid grid-cols-2 gap-4 mt-6">
                                     <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-yellow-900/30 border-yellow-700/50' : 'bg-yellow-100 border-yellow-200'} shadow-sm text-center`}><p className="text-[10px] font-black uppercase text-yellow-600 dark:text-yellow-400 mb-1 tracking-wider">Efectivo Mañana</p><p className="text-2xl font-black text-yellow-700 dark:text-yellow-500 leading-none">$ {formatCurrency(summaryData.morningCashFinal)}</p></div>
-                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-blue-900/30 border-blue-700/50' : 'bg-blue-100 border-blue-200'} shadow-sm text-center`}><p className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Efectivo Tarde</p><p className="text-2xl font-black text-yellow-700 dark:text-yellow-500 leading-none">$ {formatCurrency(summaryData.afternoonCashFinal)}</p></div>
+                                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-blue-900/30 border-blue-700/50' : 'bg-blue-100 border-blue-200'} shadow-sm text-center`}><p className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Efectivo Tarde</p><p className="text-2xl font-black text-blue-700 dark:text-blue-500 leading-none">$ {formatCurrency(summaryData.afternoonCashFinal)}</p></div>
                                 </div>
                             </div>
                         )}
@@ -1117,29 +1224,57 @@
 
                         {view === 'settings' && isAdmin && (
                             <div className="space-y-6 animate-in">
-                                {/* GESTIÓN DE USUARIOS */}
+                                {/* Gestión de Usuarios */}
                                 <div className={`${cardBgClass} p-5 rounded-2xl border shadow-sm`}>
                                     <div className="flex justify-between items-center mb-5">
                                         <h2 className="font-black text-xl">Gestión de Usuarios</h2>
-                                        <button onClick={() => { setTempUser({ id: null, name: '', profile: 'Capturista', pin: '' }); setShowUserModal(true); }} className={`p-2 px-4 ${getThemeClass('btn')} text-white rounded-full text-xs font-black shadow-sm`}>+ NUEVO USUARIO</button>
+                                        <button onClick={() => { setEditingUserId(null); setNewUser({ name: '', role: 'Capturista', pin: '' }); setShowUserForm(true); }} className={`p-2 px-4 ${getThemeClass('btn')} text-white rounded-full text-xs font-black shadow-sm`}>+ AÑADIR</button>
                                     </div>
+                                    
+                                    {(showUserForm || editingUserId) && (
+                                        <div className="space-y-4 mb-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800 animate-in">
+                                            <div className="space-y-2">
+                                                <input type="text" placeholder="Nombre de Usuario" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className={`w-full p-3 ${inputBgClass} border rounded-xl font-bold text-sm outline-none`} />
+                                                <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} className={`w-full p-3 ${inputBgClass} border rounded-xl font-bold text-sm outline-none`}>
+                                                    <option value="Administrador">Administrador</option>
+                                                    <option value="Capturista">Capturista</option>
+                                                    <option value="Espectador">Espectador</option>
+                                                </select>
+                                                <input type="text" inputMode="numeric" placeholder="PIN (6 dígitos)" maxLength={6} value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value.replace(/\D/g, '')})} className={`w-full p-3 ${inputBgClass} border rounded-xl font-bold text-sm outline-none`} />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button onClick={saveUser} className={`flex-1 py-3 ${getThemeClass('btn')} text-white rounded-xl font-black text-xs uppercase shadow-sm`}>
+                                                    {editingUserId ? 'Actualizar Usuario' : 'Guardar'}
+                                                </button>
+                                                <button onClick={() => { setEditingUserId(null); setNewUser({ name: '', role: 'Capturista', pin: '' }); setShowUserForm(false); }} className="px-4 py-3 bg-gray-400 text-white rounded-xl font-black text-xs uppercase shadow-sm">
+                                                    Cancelar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="space-y-3">
-                                        {users.map(u => (
-                                            <div key={u.id} className={`flex items-center justify-between p-3 rounded-xl border shadow-sm ${u.active ? (isDarkMode ? 'bg-gray-800' : 'bg-gray-50') : 'bg-gray-200 opacity-60'}`}>
-                                                <div className="flex flex-col">
-                                                    <span className="font-black text-sm">{u.name}</span>
-                                                    <span className="text-[10px] uppercase font-bold text-gray-400">{u.profile}</span>
+                                        {[...users].sort((a,b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name)).map(u => (
+                                            <div key={u.id} className={`flex items-center justify-between p-3 rounded-xl border shadow-sm ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} ${editingUserId === u.id ? 'ring-2 ring-indigo-500' : ''}`}>
+                                                <div className="flex items-center gap-3 flex-1">
+                                                    <div className="flex flex-col">
+                                                        <button onClick={() => handleMove('user', u.id, 'up')} className="p-0.5 text-gray-400 hover:text-indigo-500"><LucideIcon name="chevron-up" size={14} /></button>
+                                                        <button onClick={() => handleMove('user', u.id, 'down')} className="p-0.5 text-gray-400 hover:text-indigo-500"><LucideIcon name="chevron-down" size={14} /></button>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-sm">{u.name}</p>
+                                                        <p className="text-[10px] font-black uppercase opacity-50">{u.role} • PIN: {u.pin}</p>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-1">
-                                                    <button onClick={() => editUser(u)} className="p-2 text-indigo-500 rounded-lg hover:bg-indigo-50 transition-all">
-                                                        <LucideIcon name="edit-2" size={18} />
+                                                <div className="flex gap-1">
+                                                    <button onClick={() => handleEditUser(u)} className="p-2 text-indigo-500 hover:bg-white rounded-lg transition-all">
+                                                        <LucideIcon name="pencil" size={18} />
                                                     </button>
-                                                    <button onClick={() => setUsers(pv => pv.map(user => user.id === u.id ? {...user, active: !user.active} : user))} className="p-2 rounded-lg">
-                                                        {u.active ? <LucideIcon name="eye" size={18} className="text-emerald-500" /> : <LucideIcon name="eye-off" size={18} />}
-                                                    </button>
-                                                    <button onClick={() => { if(confirm('¿Eliminar usuario?')) setUsers(pv => pv.filter(user => user.id !== u.id)); }} className="p-2 text-rose-500 rounded-lg hover:bg-rose-50 transition-all">
-                                                        <LucideIcon name="trash-2" size={18} />
-                                                    </button>
+                                                    {u.id !== 'default-admin' && (
+                                                        <button onClick={() => deleteUser(u.id)} className="p-2 text-rose-500 hover:bg-white rounded-lg transition-all">
+                                                            <LucideIcon name="trash-2" size={18} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -1166,14 +1301,18 @@
                                 ].map(section => (
                                     <div key={section.type} className={`${cardBgClass} p-5 rounded-2xl border shadow-sm`}>
                                         <div className="flex justify-between items-center mb-5"><h2 className="font-black text-xl">{section.label}</h2><button onClick={() => {
-                                            const newId = Date.now().toString(); const list = section.items; const max = list.length > 0 ? Math.max(...list.map(i => i.order)) : -1;
+                                            const newId = Date.now().toString(); const list = section.items; const max = list.length > 0 ? Math.max(...list.map(i => i.order || 0)) : -1;
                                             const newItem = { id: newId, name: `${section.label} ${list.length + 1}`, active: true, order: max + 1 };
                                             if (section.type === 'seller') setSellers(prev => [...prev, newItem]); else if (section.type === 'branch') setBranches(prev => [...prev, newItem]); else setTerminals(prev => [...prev, newItem]);
                                         }} className={`p-2 px-4 ${getThemeClass('btn')} text-white rounded-full text-xs font-black shadow-sm`}>+ AÑADIR</button></div>
                                         <div className="space-y-3">
-                                            {section.items.map((item) => (
+                                            {[...section.items].sort((a, b) => (a.order || 0) - (b.order || 0) || a.name.localeCompare(b.name)).map((item) => (
                                                 <div key={item.id} className={`flex items-center justify-between p-3 rounded-xl border shadow-sm ${item.active ? (isDarkMode ? 'bg-gray-800' : 'bg-gray-50') : 'bg-gray-200 opacity-60'}`}>
                                                     <div className="flex items-center gap-3 flex-1">
+                                                        <div className="flex flex-col">
+                                                            <button onClick={() => handleMove(section.type, item.id, 'up')} className="p-0.5 text-gray-400 hover:text-indigo-500"><LucideIcon name="chevron-up" size={14} /></button>
+                                                            <button onClick={() => handleMove(section.type, item.id, 'down')} className="p-0.5 text-gray-400 hover:text-indigo-500"><LucideIcon name="chevron-down" size={14} /></button>
+                                                        </div>
                                                         <div className="relative" onClick={() => { setTargetIdForPhoto({ id: item.id, type: section.type }); photoInputRef.current.click(); }}><VisualPreview source={item.image} isDarkMode={isDarkMode} /><div className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow-sm border"><LucideIcon name="camera" size={10} /></div></div>
                                                         <input type="text" value={item.name} onChange={(e) => {
                                                             const n = e.target.value; 
@@ -1203,44 +1342,17 @@
                         )}
                     </main>
 
-                    <Navigation currentView={view} setView={setView} theme={theme} />
+                    <Navigation currentView={view} setView={setView} theme={theme} currentUser={currentUser} />
 
                     {/* Modales */}
-                    {showUserModal && (
-                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                            <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl border animate-in overflow-hidden`}>
-                                <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}>
-                                    <h3 className={`font-black uppercase text-sm ${themeClass}`}>{tempUser.id ? 'Modificar Usuario' : 'Crear Usuario'}</h3>
-                                    <button onClick={() => setShowUserModal(false)}><LucideIcon name="x" size={24} className={themeClass} /></button>
-                                </div>
-                                <div className="p-6 space-y-4">
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-black uppercase text-gray-400">Nombre del Usuario</label>
-                                        <input type="text" value={tempUser.name} onChange={e => setTempUser(pv => ({...pv, name: e.target.value}))} className={`w-full p-3 ${inputBgClass} border rounded-xl font-bold`} placeholder="Nombre..." />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-black uppercase text-gray-400">Perfil</label>
-                                        <select value={tempUser.profile} onChange={e => setTempUser(pv => ({...pv, profile: e.target.value}))} className={`w-full p-3 ${inputBgClass} border rounded-xl font-bold`}>
-                                            <option value="Administrador">Administrador</option>
-                                            <option value="Capturista">Capturista</option>
-                                            <option value="Espectador">Espectador</option>
-                                        </select>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-black uppercase text-gray-400">PIN de 6 dígitos</label>
-                                        <input type="text" inputMode="numeric" maxLength={6} value={tempUser.pin} onChange={e => setTempUser(pv => ({...pv, pin: e.target.value.replace(/\D/g, '')}))} className={`w-full p-3 ${inputBgClass} border rounded-xl font-mono text-center tracking-widest text-lg`} placeholder="000000" />
-                                    </div>
-                                    <button onClick={saveUser} className={`w-full py-4 rounded-2xl ${getThemeClass('btn')} text-white font-black uppercase text-sm shadow-xl transition-all active:scale-95`}>{tempUser.id ? 'MODIFICAR' : 'CREAR USUARIO'}</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {conceptModal.show && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if(e.target === e.currentTarget) setConceptModal(pv => ({ ...pv, show: false })); }}>
                             <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in`}>
                                 <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}><div className="flex items-center gap-2"><LucideIcon name="message-square-text" size={20} className={themeClass} /><h3 className={`font-black uppercase text-sm ${themeClass}`}>Capturar Concepto</h3></div><button onClick={() => setConceptModal(pv => ({ ...pv, show: false }))}><LucideIcon name="x" size={24} className={themeClass} /></button></div>
-                                <div className="p-6 space-y-4"><textarea value={conceptModal.tempDescription} onChange={(e) => setConceptModal(pv => ({ ...pv, tempDescription: e.target.value }))} placeholder="Descripción..." className={`w-full p-4 h-32 ${inputBgClass} border rounded-2xl font-medium text-sm outline-none focus:ring-2 ${getThemeClass('ring')} resize-none`} autoFocus /><button onClick={saveConcept} className={`w-full py-4 rounded-2xl ${getThemeClass('btn')} text-white font-black uppercase text-sm shadow-xl transition-all active:scale-95`}>GUARDAR</button></div>
+                                <div className="p-6 space-y-4">
+                                    <textarea readOnly={isEspectador} value={conceptModal.tempDescription} onChange={(e) => isEspectador ? null : setConceptModal(pv => ({ ...pv, tempDescription: e.target.value }))} placeholder="Descripción..." className={`w-full p-4 h-32 ${inputBgClass} border rounded-2xl font-medium text-sm outline-none focus:ring-2 ${getThemeClass('ring')} resize-none disabled:opacity-50`} autoFocus />
+                                    {!isEspectador && <button onClick={saveConcept} className={`w-full py-4 rounded-2xl ${getThemeClass('btn')} text-white font-black uppercase text-sm shadow-xl transition-all active:scale-95`}>GUARDAR</button>}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1249,13 +1361,20 @@
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if(e.target === e.currentTarget) setCommissionModal(pv => ({ ...pv, show: false })); }}>
                             <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border animate-in`}>
                                 <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}><div className="flex items-center gap-2"><LucideIcon name="percent" size={20} className={themeClass} /><h3 className={`font-black uppercase text-sm ${themeClass}`}>Comisión</h3></div><button onClick={() => setCommissionModal(pv => ({ ...pv, show: false }))}><LucideIcon name="x" size={24} className={themeClass} /></button></div>
-                                <div className="p-6 space-y-6"><div className="flex flex-wrap gap-2">{(['10', '20', '25', 'mixto']).map(t => (<button key={t} onClick={() => setCommissionModal(pv => ({ ...pv, tempType: t }))} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${commissionModal.tempType === t ? getThemeClass('btn') + ' text-white scale-105 shadow-md' : 'bg-gray-100 text-gray-400'}`}>{t === 'mixto' ? 'Mixto' : `${t}%`}</button>))}</div>
-                                    {commissionModal.tempType === 'mixto' && (<div className="grid grid-cols-2 gap-4">
-                                        <input type="text" inputMode="numeric" placeholder="20%" value={commissionModal.tempM20 ? formatCurrency(commissionModal.tempM20) : ''} onChange={(e) => setCommissionModal(pv => ({ ...pv, tempM20: parseFloat(e.target.value.replace(/,/g, '')) || 0 }))} className={`w-full p-3 ${inputBgClass} border rounded-xl font-black text-sm`} />
-                                        <input type="text" inputMode="numeric" placeholder="25%" value={commissionModal.tempM25 ? formatCurrency(commissionModal.tempM25) : ''} onChange={(e) => setCommissionModal(pv => ({ ...pv, tempM25: parseFloat(e.target.value.replace(/,/g, '')) || 0 }))} className={`w-full p-3 ${inputBgClass} border rounded-xl font-black text-sm`} />
-                                    </div>)}
+                                <div className="p-6 space-y-6">
+                                    <div className="flex flex-wrap gap-2">{(['10', '20', '25', 'mixto']).map(t => (
+                                        <button key={t} disabled={isEspectador} onClick={() => setCommissionModal(pv => ({ ...pv, tempType: t }))} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${commissionModal.tempType === t ? getThemeClass('btn') + ' text-white scale-105 shadow-md' : 'bg-gray-100 text-gray-400'}`}>
+                                            {t === 'mixto' ? 'Mixto' : `${t}%`}
+                                        </button>
+                                    ))}</div>
+                                    {commissionModal.tempType === 'mixto' && (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <input type="text" inputMode="numeric" disabled={isEspectador} placeholder="20%" value={commissionModal.tempM20 ? formatCurrency(commissionModal.tempM20) : ''} onChange={(e) => setCommissionModal(pv => ({ ...pv, tempM20: parseFloat(e.target.value.replace(/,/g, '')) || 0 }))} className={`w-full p-3 ${inputBgClass} border rounded-xl font-black text-sm`} />
+                                            <input type="text" inputMode="numeric" disabled={isEspectador} placeholder="25%" value={commissionModal.tempM25 ? formatCurrency(commissionModal.tempM25) : ''} onChange={(e) => setCommissionModal(pv => ({ ...pv, tempM25: parseFloat(e.target.value.replace(/,/g, '')) || 0 }))} className={`w-full p-3 ${inputBgClass} border rounded-xl font-black text-sm`} />
+                                        </div>
+                                    )}
                                     <div className="p-4 rounded-xl bg-emerald-50 text-center font-black text-emerald-600"><p className="text-[9px] uppercase">Comisión Estimada</p><p className="text-4xl">$ {formatCurrency(commissionModal.tempType === 'none' ? 0 : (commissionModal.tempType === 'mixto' ? (commissionModal.tempM20 * 0.2 + commissionModal.tempM25 * 0.25) : (getSaleAmountLocal(commissionModal.sellerId, commissionModal.shift) * (parseFloat(commissionModal.tempType) / 100))))}</p></div>
-                                    <button onClick={saveCommission} className={`w-full py-4 rounded-2xl ${getThemeClass('btn')} text-white font-black uppercase text-sm shadow-xl transition-all active:scale-95`}>GUARDAR</button>
+                                    {!isEspectador && <button onClick={saveCommission} className={`w-full py-4 rounded-2xl ${getThemeClass('btn')} text-white font-black uppercase text-sm shadow-xl transition-all active:scale-95`}>GUARDAR</button>}
                                 </div>
                             </div>
                         </div>
@@ -1316,15 +1435,15 @@
                                         </div>
                                     </div>
                                     <div className="space-y-1 pt-2 border-t"><div className="flex justify-between items-center p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-[10px] font-black text-emerald-600 uppercase"><span>Total Comisiones</span><span>$ {formatCurrency(calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</span></div><div className="flex justify-between items-center p-2 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-[10px] font-black text-rose-600 uppercase"><span>Total A cuenta</span><span>-$ {formatCurrency(calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</span></div></div>
-                                    <input type="text" inputMode="numeric" placeholder="Sueldo Base" value={paymentCalcModal.baseSalary ? formatCurrency(paymentCalcModal.baseSalary) : ''} onChange={e => setPaymentCalcModal(pv => ({...pv, baseSalary: parseFloat(e.target.value.replace(/,/g, '')) || 0}))} className={`w-full p-4 ${inputBgClass} border rounded-xl font-black shadow-inner`} />
-                                    <div className="p-5 rounded-2xl bg-indigo-500 text-white shadow-xl text-center space-y-4"><p className="text-[10px] font-black uppercase opacity-60">Pagar</p><p className="text-4xl font-black tracking-tight">$ {formatCurrency(calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</p><div className="grid grid-cols-2 gap-2"><button onClick={() => { const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'morning')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'morning', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Mañana</button><button onClick={() => { const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'afternoon')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'afternoon', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Tarde</button></div></div>
+                                    <input type="text" inputMode="numeric" disabled={isEspectador} placeholder="Sueldo Base" value={paymentCalcModal.baseSalary ? formatCurrency(paymentCalcModal.baseSalary) : ''} onChange={e => setPaymentCalcModal(pv => ({...pv, baseSalary: parseFloat(e.target.value.replace(/,/g, '')) || 0}))} className={`w-full p-4 ${inputBgClass} border rounded-xl font-black shadow-inner`} />
+                                    {!isEspectador && <div className="p-5 rounded-2xl bg-indigo-500 text-white shadow-xl text-center space-y-4"><p className="text-[10px] font-black uppercase opacity-60">Pagar</p><p className="text-4xl font-black tracking-tight">$ {formatCurrency(calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate))}</p><div className="grid grid-cols-2 gap-2"><button onClick={() => { const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'morning')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'morning', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Mañana</button><button onClick={() => { const amt = calculateComs(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate) + paymentCalcModal.baseSalary - calculatePrevPmts(paymentCalcModal.sellerId, paymentCalcModal.startDate, paymentCalcModal.endDate); setPayments(pv => [...pv.filter(p => !(p.date === selectedDate && p.sellerId === paymentCalcModal.sellerId && p.shift === 'afternoon')), { date: selectedDate, sellerId: paymentCalcModal.sellerId, amount: Math.ceil(amt), shift: 'afternoon', calculated: true }]); setPaymentCalcModal(pv => ({ ...pv, show: false })); }} className="py-2 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase transition-all">Tarde</button></div></div>}
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {/* Modal Menú Secreto */}
-                    {showSecretModal && (
+                    {showSecretModal && (isAdmin || isEspectador) && (
                         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in" onClick={(e) => { if(e.target === e.currentTarget) { setShowSecretModal(false); setSecretTab('daily'); } }}>
                             <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border flex flex-col max-h-[80vh]`}>
                                 <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}>
@@ -1349,36 +1468,35 @@
                                 <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
                                     {secretTab === 'daily' && (
                                         <>
-                                            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} p-4 rounded-2xl space-y-3 border`}>
-                                                <p className="text-[10px] font-black uppercase opacity-50 text-center mb-1">Nueva Inversión - {getDayOfWeek(selectedDate)}</p>
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="Concepto" 
-                                                    disabled={isEspectador}
-                                                    value={newInvestment.concept} 
-                                                    onChange={e => setNewInvestment(pv => ({...pv, concept: e.target.value}))} 
-                                                    className={`w-full p-3 ${inputBgClass} border rounded-xl font-bold text-sm shadow-inner outline-none ${isEspectador ? 'opacity-50' : ''}`}
-                                                />
-                                                <div className="relative">
-                                                    <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${themeClass} font-bold opacity-60`}>$</span>
+                                            {!isEspectador && (
+                                                <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} p-4 rounded-2xl space-y-3 border`}>
+                                                    <p className="text-[10px] font-black uppercase opacity-50 text-center mb-1">Nueva Inversión - {getDayOfWeek(selectedDate)}</p>
                                                     <input 
                                                         type="text" 
-                                                        inputMode="numeric" 
-                                                        disabled={isEspectador}
-                                                        placeholder="Monto" 
-                                                        value={newInvestment.amount ? formatCurrency(newInvestment.amount) : ''} 
-                                                        onChange={e => setNewInvestment(pv => ({...pv, amount: e.target.value.replace(/,/g, '')}))} 
-                                                        className={`w-full pl-7 pr-3 p-3 ${inputBgClass} border rounded-xl font-black text-sm shadow-inner outline-none ${isEspectador ? 'opacity-50' : ''}`}
+                                                        placeholder="Concepto" 
+                                                        value={newInvestment.concept} 
+                                                        onChange={e => setNewInvestment(pv => ({...pv, concept: e.target.value}))} 
+                                                        className={`w-full p-3 ${inputBgClass} border rounded-xl font-bold text-sm shadow-inner outline-none`}
                                                     />
+                                                    <div className="relative">
+                                                        <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${themeClass} font-bold opacity-60`}>$</span>
+                                                        <input 
+                                                            type="text" 
+                                                            inputMode="numeric" 
+                                                            placeholder="Monto" 
+                                                            value={newInvestment.amount ? formatCurrency(newInvestment.amount) : ''} 
+                                                            onChange={e => setNewInvestment(pv => ({...pv, amount: e.target.value.replace(/,/g, '')}))} 
+                                                            className={`w-full pl-7 pr-3 p-3 ${inputBgClass} border rounded-xl font-black text-sm shadow-inner outline-none`}
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        onClick={addInvestment} 
+                                                        className={`w-full py-3 rounded-xl ${getThemeClass('btn')} text-white font-black uppercase text-xs shadow-lg active:scale-95 transition-all`}
+                                                    >
+                                                        Añadir Inversión
+                                                    </button>
                                                 </div>
-                                                <button 
-                                                    disabled={isEspectador}
-                                                    onClick={addInvestment} 
-                                                    className={`w-full py-3 rounded-xl ${getThemeClass('btn')} text-white font-black uppercase text-xs shadow-lg active:scale-95 transition-all ${isEspectador ? 'opacity-50 grayscale' : ''}`}
-                                                >
-                                                    Añadir Inversión
-                                                </button>
-                                            </div>
+                                            )}
 
                                             <div className="space-y-2">
                                                 <h4 className="text-[10px] font-black uppercase text-gray-400 mb-2 border-b pb-1">Registros de hoy</h4>
@@ -1400,6 +1518,10 @@
                                                     ))
                                                 )}
                                             </div>
+
+                                            {!isLastDayOfMonth && (
+                                                <p className="text-center text-[9px] font-black text-gray-400 uppercase opacity-60 mt-4">Solo fin de mes se activan más opciones</p>
+                                            )}
                                         </>
                                     )}
 
@@ -1425,7 +1547,7 @@
                                                                     placeholder="Monto de Renta"
                                                                     value={currentRent ? formatCurrency(currentRent) : ''}
                                                                     onChange={(e) => handleRentChange(br.id, e.target.value.replace(/,/g, ''))}
-                                                                    className={`w-full pl-7 pr-3 p-2 ${inputBgClass} border rounded-xl font-bold text-sm outline-none ${isEspectador ? 'opacity-50' : ''}`}
+                                                                    className={`w-full pl-7 pr-3 p-2 ${inputBgClass} border rounded-xl font-bold text-sm outline-none`}
                                                                 />
                                                             </div>
                                                         </div>
@@ -1457,7 +1579,7 @@
                                                                     placeholder="Monto de Comisión"
                                                                     value={currentComm ? formatCurrency(currentComm) : ''}
                                                                     onChange={(e) => handleTermCommChange(t.id, e.target.value.replace(/,/g, ''))}
-                                                                    className={`w-full pl-7 pr-3 p-2 ${inputBgClass} border rounded-xl font-bold text-sm outline-none ${isEspectador ? 'opacity-50' : ''}`}
+                                                                    className={`w-full pl-7 pr-3 p-2 ${inputBgClass} border rounded-xl font-bold text-sm outline-none`}
                                                                 />
                                                             </div>
                                                         </div>
@@ -1481,12 +1603,14 @@
                                                         </button>
                                                     </div>
                                                 </div>
-                                                <button 
-                                                    onClick={exportToExcel}
-                                                    className="w-full py-3 bg-emerald-500 text-white rounded-xl font-black text-xs uppercase shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
-                                                >
-                                                    <LucideIcon name="download" size={14} /> Descargar Reporte Mensual
-                                                </button>
+                                                {isLastDayOfMonth && (
+                                                    <button 
+                                                        onClick={exportToExcel}
+                                                        className="w-full py-3 bg-emerald-500 text-white rounded-xl font-black text-xs uppercase shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                                                    >
+                                                        <LucideIcon name="download" size={14} /> Descargar Reporte Mensual
+                                                    </button>
+                                                )}
                                             </div>
                                             <div className="space-y-2">
                                                 {monthInvestments.length === 0 ? (
