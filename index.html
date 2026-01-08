@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TRIANGULO APP 5.0 - Cloud Sync</title>
+    <title>TRIANGULO APP 10.0 - Cloud Sync</title>
     <!-- Librerías Externas via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,6 +11,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
@@ -45,11 +46,11 @@
         }
         @keyframes grow-save {
             0% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.1); opacity: 1; }
+            50% { transform: scale(1.15); opacity: 1; }
             100% { transform: scale(1); opacity: 0.8; }
         }
         
-        .triangle-base { transition: all 0.3s ease; }
+        .triangle-base { transition: all 0.3s ease; cursor: pointer; }
         .triangle-flash-success { animation: flash-success 1s ease-out forwards; color: #bef264 !important; }
         .triangle-flash-error { animation: flash-error 1s ease-out forwards; color: #fca5a5 !important; }
         .triangle-growing { animation: grow-save 1s ease-in-out infinite; color: #6366f1 !important; }
@@ -164,7 +165,9 @@
             const [branchClosures, setBranchClosures] = useState([]);
             const [terminalEntries, setTerminalEntries] = useState([]);
             const [extraExpenses, setExtraExpenses] = useState([]);
-            const [investments, setInvestments] = useState([]); // Nueva persistencia de inversiones
+            const [investments, setInvestments] = useState([]);
+            const [rents, setRents] = useState([]);
+            const [terminalCommissions, setTerminalCommissions] = useState([]);
 
             const [commissionModal, setCommissionModal] = useState({ show: false, sellerId: '', shift: 'morning', tempType: 'none', tempM20: 0, tempM25: 0 });
             const [conceptModal, setConceptModal] = useState({ show: false, type: 'gasto', tempDescription: '' });
@@ -178,6 +181,7 @@
             const [headerClicks, setHeaderClicks] = useState(0);
             const [lastHeaderClick, setLastHeaderClick] = useState(0);
             const [showSecretModal, setShowSecretModal] = useState(false);
+            const [secretTab, setSecretTab] = useState('daily'); 
             const [newInvestment, setNewInvestment] = useState({ concept: '', amount: '' });
 
             // --- REFS ---
@@ -199,6 +203,18 @@
             const morningFieldBg = isDarkMode ? 'bg-yellow-400/20 border-yellow-500/30' : 'bg-yellow-50 border-yellow-100';
             const afternoonFieldBg = isDarkMode ? 'bg-blue-400/20 border-blue-500/30' : 'bg-blue-50 border-blue-100';
 
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [view, selectedDate, showSecretModal, secretTab, commissionModal, paymentCalcModal, conceptModal]);
+
+            // Determinar si es último día de mes
+            const isLastDayOfMonth = useMemo(() => {
+                const today = new Date(selectedDate + 'T12:00:00');
+                const nextDay = new Date(today);
+                nextDay.setDate(today.getDate() + 1);
+                return nextDay.getMonth() !== today.getMonth();
+            }, [selectedDate]);
+
             // --- UTILITIES DE ESTADO ---
             const applyData = (p) => {
                 if (p.sellers) setSellers(p.sellers); 
@@ -210,6 +226,8 @@
                 if (p.terminalEntries) setTerminalEntries(p.terminalEntries); 
                 if (p.extraExpenses) setExtraExpenses(p.extraExpenses);
                 if (p.investments) setInvestments(p.investments);
+                if (p.rents) setRents(p.rents);
+                if (p.terminalCommissions) setTerminalCommissions(p.terminalCommissions);
                 if (p.theme) setTheme(p.theme); 
                 if (p.isDarkMode !== undefined) {
                     setIsDarkMode(p.isDarkMode);
@@ -228,6 +246,7 @@
                 const dayPayments = payments.filter(p => p.date === selectedDate);
                 const dayTerminals = terminalEntries.filter(t => t.date === selectedDate);
                 const dayExtras = extraExpenses.filter(e => e.date === selectedDate);
+                const dayInvestmentsList = investments.filter(i => i.date === selectedDate);
                 
                 const detailByBranch = activeBranches.map(br => {
                     const data = dayClosures.find(c => c.branchId === br.id);
@@ -241,6 +260,7 @@
                 
                 const totalGastos = dayExtras.filter(e => e.type === 'gasto').reduce((acc, e) => acc + e.amount, 0);
                 const totalGarantias = dayExtras.filter(e => e.type === 'garantia').reduce((acc, e) => acc + e.amount, 0);
+                
                 const totalDeductions = totalPayments + totalGastos + totalGarantias;
                 const totalDay = totalGross - totalDeductions;
                 const totalTerminals = dayTerminals.reduce((acc, t) => acc + t.amount, 0);
@@ -265,7 +285,7 @@
 
                 return { 
                     date: selectedDate, detailByBranch, totalGross, totalPayments, totalGastos, totalGarantias,
-                    totalDeductions, totalDay, totalTerminals, totalCash, groupedExtras,
+                    totalDeductions, totalDay, totalTerminals, totalCash, groupedExtras, dayInvestmentsList,
                     morningCashFinal, afternoonCashFinal, morningPaymentsTotal, afternoonPaymentsTotal,
                     morningSalesTotal: daySales.filter(s => s.shift === 'morning').reduce((acc, s) => acc + s.amount, 0),
                     afternoonSalesTotal: daySales.filter(s => s.shift === 'afternoon').reduce((acc, s) => acc + s.amount, 0),
@@ -276,30 +296,18 @@
                         return acc;
                     }, {})).filter(p => p.amount > 0)
                 };
-            }, [selectedDate, sales, branchClosures, payments, terminalEntries, extraExpenses, activeBranches, sellers]);
+            }, [selectedDate, sales, branchClosures, payments, terminalEntries, extraExpenses, investments, activeBranches, sellers]);
 
-            // --- CALCULOS ---
-            const calculateComs = (id, s, e) => sales.filter(sa => sa.sellerId === id && sa.date >= s && sa.date <= e).reduce((acc, curr) => acc + (curr.commission || 0), 0);
-            const calculatePrevPmts = (id, s, e) => payments.filter(p => p.sellerId === id && p.date >= s && p.date <= e && p.amount > 0).reduce((acc, curr) => acc + curr.amount, 0);
+            // Inversiones del mes - Ordenadas de la más antigua (arriba) a la más reciente (abajo)
+            const monthInvestments = useMemo(() => {
+                const [year, month] = selectedDate.split('-');
+                return investments.filter(i => {
+                    const [iYear, iMonth] = i.date.split('-');
+                    return iYear === year && iMonth === month;
+                }).sort((a, b) => a.date.localeCompare(b.date));
+            }, [investments, selectedDate]);
 
-            const getCommissionsBreakdown = (id, s, e) => {
-                const grouped = sales.filter(sa => sa.sellerId === id && sa.date >= s && sa.date <= e && (sa.commission || 0) > 0)
-                    .reduce((acc, curr) => {
-                        if (!acc[curr.date]) acc[curr.date] = { morning: 0, afternoon: 0 };
-                        acc[curr.date][curr.shift] += curr.commission; return acc;
-                    }, {});
-                return Object.entries(grouped).sort((a,b) => a[0].localeCompare(b[0]));
-            };
-
-            const getPaymentsBreakdown = (id, s, e) => {
-                const grouped = payments.filter(p => p.sellerId === id && p.date >= s && p.date <= e && p.amount > 0)
-                    .reduce((acc, curr) => {
-                        if (!acc[curr.date]) acc[curr.date] = { morning: 0, afternoon: 0 };
-                        acc[curr.date][curr.shift] += curr.amount; return acc;
-                    }, {});
-                return Object.entries(grouped).sort((a,b) => a[0].localeCompare(b[0]));
-            };
-
+            // --- HELPERS DE DATOS ---
             const getSaleAmountLocal = (sellerId, shift) => sales.find(s => s.date === selectedDate && s.sellerId === sellerId && s.shift === shift)?.amount;
             const getPaymentAmountLocal = (sellerId, shift) => payments.find(p => p.date === selectedDate && p.sellerId === sellerId && p.shift === shift)?.amount || 0;
             const getBranchClosureLocal = (branchId) => branchClosures.find(b => b.date === selectedDate && b.branchId === branchId) || { morningAmount: 0, afternoonAmount: 0 };
@@ -320,6 +328,28 @@
                     return a.order - b.order;
                 });
             }, [activeSellers, sales, selectedDate, view]);
+
+            // --- CALCULOS DE COMISIONES ---
+            const calculateComs = (id, s, e) => sales.filter(sa => sa.sellerId === id && sa.date >= s && sa.date <= e).reduce((acc, curr) => acc + (curr.commission || 0), 0);
+            const calculatePrevPmts = (id, s, e) => payments.filter(p => p.sellerId === id && p.date >= s && p.date <= e && p.amount > 0).reduce((acc, curr) => acc + curr.amount, 0);
+
+            const getCommissionsBreakdown = (id, s, e) => {
+                const grouped = sales.filter(sa => sa.sellerId === id && sa.date >= s && sa.date <= e && (sa.commission || 0) > 0)
+                    .reduce((acc, curr) => {
+                        if (!acc[curr.date]) acc[curr.date] = { morning: 0, afternoon: 0 };
+                        acc[curr.date][curr.shift] += curr.commission; return acc;
+                    }, {});
+                return Object.entries(grouped).sort((a,b) => a[0].localeCompare(b[0]));
+            };
+
+            const getPaymentsBreakdown = (id, s, e) => {
+                const grouped = payments.filter(p => p.sellerId === id && p.date >= s && p.date <= e && p.amount > 0)
+                    .reduce((acc, curr) => {
+                        if (!acc[curr.date]) acc[curr.date] = { morning: 0, afternoon: 0 };
+                        acc[curr.date][curr.shift] += curr.amount; return acc;
+                    }, {});
+                return Object.entries(grouped).sort((a,b) => a[0].localeCompare(b[0]));
+            };
 
             // --- SUPABASE & DATA SYNC ---
             const SUPABASE_URL = 'https://gpkiboiatmshvwmwdnqx.supabase.co'; 
@@ -351,7 +381,7 @@
             const persistData = async () => {
                 if (sellers.length === 0) return;
                 setSaveStatus('loading');
-                const dataToSave = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, investments, theme, isDarkMode };
+                const dataToSave = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, investments, rents, terminalCommissions, theme, isDarkMode };
                 localStorage.setItem('vendas_app_data', JSON.stringify(dataToSave));
                 if (supabaseClient) {
                     try {
@@ -365,7 +395,7 @@
             useEffect(() => {
                 const timer = setTimeout(() => { if(sellers.length > 0) persistData(); }, 1500);
                 return () => clearTimeout(timer);
-            }, [sales, payments, branchClosures, terminalEntries, extraExpenses, investments, sellers, branches, terminals, theme, isDarkMode]);
+            }, [sales, payments, branchClosures, terminalEntries, extraExpenses, investments, rents, terminalCommissions, sellers, branches, terminals, theme, isDarkMode]);
 
             // --- HANDLERS ---
             const handleHeaderClick = () => {
@@ -373,14 +403,11 @@
                 if (now - lastHeaderClick < 500) {
                     const newCount = headerClicks + 1;
                     if (newCount === 5) {
+                        setSecretTab('daily');
                         setShowSecretModal(true);
                         setHeaderClicks(0);
-                    } else {
-                        setHeaderClicks(newCount);
-                    }
-                } else {
-                    setHeaderClicks(1);
-                }
+                    } else setHeaderClicks(newCount);
+                } else setHeaderClicks(1);
                 setLastHeaderClick(now);
             };
 
@@ -400,9 +427,324 @@
                 setInvestments(prev => prev.filter(i => i.id !== id));
             };
 
-            const dayInvestments = useMemo(() => {
-                return investments.filter(i => i.date === selectedDate);
-            }, [investments, selectedDate]);
+            const handleRentChange = (branchId, val) => {
+                const amount = parseFloat(val) || 0;
+                const [year, month] = selectedDate.split('-');
+                const monthKey = `${year}-${month}`;
+                setRents(prev => {
+                    const filtered = prev.filter(r => !(r.branchId === branchId && r.monthKey === monthKey));
+                    return [...filtered, { branchId, monthKey, amount }];
+                });
+            };
+
+            const handleTermCommChange = (terminalId, val) => {
+                const amount = parseFloat(val) || 0;
+                const [year, month] = selectedDate.split('-');
+                const monthKey = `${year}-${month}`;
+                setTerminalCommissions(prev => {
+                    const filtered = prev.filter(tc => !(tc.terminalId === terminalId && tc.monthKey === monthKey));
+                    return [...filtered, { terminalId, monthKey, amount }];
+                });
+            };
+
+            const copyMonthInvestmentsReport = () => {
+                if (monthInvestments.length === 0) return;
+                const grouped = monthInvestments.reduce((acc, inv) => {
+                    if (!acc[inv.date]) acc[inv.date] = [];
+                    acc[inv.date].push(inv);
+                    return acc;
+                }, {});
+                let reportText = "";
+                Object.keys(grouped).sort().forEach(date => {
+                    const [y, m, d] = date.split('-');
+                    reportText += `${d}/${m}/${y}\n`;
+                    grouped[date].forEach(item => {
+                        reportText += `$${formatCurrency(item.amount)} ${item.concept}\n`;
+                    });
+                    reportText += "\n";
+                });
+                navigator.clipboard.writeText(reportText.trim());
+                alert('Reporte de inversiones mensual copiado.');
+            };
+
+            // --- EXPORTAR EXCEL ---
+            const exportToExcel = async () => {
+                const [year, month] = selectedDate.split('-').map(Number);
+                const monthNames = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+                const currentMonthName = monthNames[month - 1];
+                const daysInMonth = new Date(year, month, 0).getDate();
+                const monthKey = `${selectedDate.split('-')[0]}-${selectedDate.split('-')[1]}`;
+                
+                const workbook = new ExcelJS.Workbook();
+                const sheet = workbook.addWorksheet(`${currentMonthName} ${year}`);
+                
+                const activeBr = activeBranches;
+                const activeSells = [...activeSellers].sort((a,b) => a.name.localeCompare(b.name));
+                const activeTerms = activeTerminals;
+                
+                // Estilos de Colores Solicitados
+                const headerStyleBase = { font: { bold: true, size: 9 }, alignment: { horizontal: 'center', vertical: 'middle' }, border: { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } } };
+                const pastelGreen = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'D9EAD3' } }; // Sucursales, Promedio, Utilidad
+                const pastelRed = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F4CCCC' } };   // Salarios, Gastos, Renta, Terminals, Sellers
+                const pastelYellow = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2CC' } }; // Inversiones
+                const intenseGreen = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'A9D08E' } }; // Utilidad Socio
+                const darkGrayPastel = { type: 'pattern', pattern: 'solid', fgColor: { argb: '444444' } }; // TOTAL (Gris Oscuro Pastel)
+                
+                // FILA 1: Encabezados de Sección
+                const row1 = sheet.getRow(1);
+                row1.getCell(1).value = `${currentMonthName} ${year}`;
+                sheet.mergeCells(1, 1, 1, activeBr.length + 9);
+                row1.getCell(activeBr.length + 11).value = `SALARIOS ${currentMonthName} ${year}`;
+                sheet.mergeCells(1, activeBr.length + 11, 1, activeBr.length + 11 + activeSells.length + 1);
+                row1.eachCell(c => { c.font = { bold: true, size: 11 }; c.alignment = { horizontal: 'center' }; });
+
+                // FILA 2: Headers Detallados
+                const row2 = sheet.getRow(2);
+                row2.getCell(1).value = ""; // Días
+                
+                let col = 2;
+                activeBr.forEach(b => {
+                    const c = row2.getCell(col++);
+                    c.value = b.name.toUpperCase();
+                    c.fill = pastelGreen;
+                    c.font = { bold: true, size: 9, color: { argb: '000000' } };
+                });
+                
+                // Columna TOTAL (Ventas)
+                const totalVentasCol = col++;
+                row2.getCell(totalVentasCol).value = "TOTAL";
+                row2.getCell(totalVentasCol).fill = darkGrayPastel;
+                row2.getCell(totalVentasCol).font = { color: { argb: 'FFFFFF' }, bold: true, size: 9 };
+
+                // Promedio
+                const promCol = col++;
+                row2.getCell(promCol).value = "PROMEDIO DE VENTA";
+                row2.getCell(promCol).fill = pastelGreen;
+                row2.getCell(promCol).font = { bold: true, size: 9, color: { argb: '000000' } };
+
+                // Salarios
+                const salCol = col++;
+                row2.getCell(salCol).value = "SALARIOS";
+                row2.getCell(salCol).fill = pastelRed;
+                row2.getCell(salCol).font = { bold: true, size: 9, color: { argb: '000000' } };
+
+                // Gastos
+                const gastCol = col++;
+                row2.getCell(gastCol).value = "GASTOS OPERATIVOS";
+                row2.getCell(gastCol).fill = pastelRed;
+                row2.getCell(gastCol).font = { bold: true, size: 9, color: { argb: '000000' } };
+
+                // Renta
+                const rentCol = col++;
+                row2.getCell(rentCol).value = "RENTA DIARIA";
+                row2.getCell(rentCol).fill = pastelRed;
+                row2.getCell(rentCol).font = { bold: true, size: 9, color: { argb: '000000' } };
+
+                // Terminals
+                activeTerms.forEach(t => {
+                    const c = row2.getCell(col++);
+                    c.value = t.name.toUpperCase();
+                    c.fill = pastelRed;
+                    c.font = { bold: true, size: 9, color: { argb: '000000' } };
+                });
+
+                // Inversiones
+                const invCol = col++;
+                row2.getCell(invCol).value = "INVERSIONES";
+                row2.getCell(invCol).fill = pastelYellow;
+                row2.getCell(invCol).font = { bold: true, size: 9, color: { argb: '000000' } };
+
+                // Utilidad Neta
+                const utilCol = col++;
+                row2.getCell(utilCol).value = "UTILIDAD NETA";
+                row2.getCell(utilCol).fill = pastelGreen;
+                row2.getCell(utilCol).font = { bold: true, size: 9, color: { argb: '000000' } };
+
+                // Espacio y Segunda Sección (Salarios)
+                col++; // Spacer
+                row2.getCell(col++).value = ""; // Días 2
+                activeSells.forEach(s => {
+                    const c = row2.getCell(col++);
+                    c.value = s.name.toUpperCase();
+                    c.fill = pastelRed;
+                    c.font = { bold: true, size: 9, color: { argb: '000000' } };
+                });
+                const totalSalSellsCol = col;
+                row2.getCell(totalSalSellsCol).value = "TOTAL";
+                row2.getCell(totalSalSellsCol).fill = darkGrayPastel;
+                row2.getCell(totalSalSellsCol).font = { color: { argb: 'FFFFFF' }, bold: true, size: 9 };
+
+                row2.eachCell(c => { 
+                    const wasWhite = c.font?.color?.argb === 'FFFFFF';
+                    const label = c.value;
+                    Object.assign(c, headerStyleBase); 
+                    c.font = { bold: true, size: 9, color: { argb: (wasWhite || label === "TOTAL") ? 'FFFFFF' : '000000' } };
+                });
+
+                const totalMonthRent = rents.filter(r => r.monthKey === monthKey).reduce((acc, r) => acc + r.amount, 0);
+                const dailyRent = totalMonthRent / daysInMonth;
+
+                let cumulativeSales = 0;
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const r = sheet.getRow(day + 2);
+                    r.getCell(1).value = day;
+                    
+                    let dailyTotalSales = 0;
+                    let c = 2;
+                    activeBr.forEach(b => {
+                        const val = branchClosures.find(bc => bc.date === dStr && bc.branchId === b.id);
+                        const amt = (val?.morningAmount || 0) + (val?.afternoonAmount || 0);
+                        r.getCell(c++).value = amt;
+                        dailyTotalSales += amt;
+                    });
+                    
+                    r.getCell(c++).value = dailyTotalSales; // TOTAL Ventas
+                    cumulativeSales += dailyTotalSales;
+                    r.getCell(c++).value = cumulativeSales / day; // Promedio
+                    
+                    const dailySalaries = payments.filter(p => p.date === dStr).reduce((acc, p) => acc + p.amount, 0);
+                    r.getCell(c++).value = dailySalaries;
+                    
+                    const dailyGastos = extraExpenses.filter(e => e.date === dStr).reduce((acc, e) => acc + e.amount, 0);
+                    r.getCell(c++).value = dailyGastos;
+                    r.getCell(c++).value = dailyRent;
+                    
+                    let totalTermCommDay = 0;
+                    activeTerms.forEach(t => {
+                        const val = (day === daysInMonth) ? (terminalCommissions.find(tc => tc.terminalId === t.id && tc.monthKey === monthKey)?.amount || 0) : 0;
+                        r.getCell(c++).value = val;
+                        totalTermCommDay += val;
+                    });
+                    
+                    const dailyInvest = investments.filter(i => i.date === dStr).reduce((acc, i) => acc + i.amount, 0);
+                    r.getCell(c++).value = dailyInvest;
+                    
+                    // Fórmula Utilidad Neta Actualizada: Venta - Salarios - Gastos - Renta - Comision - Inversiones
+                    const dailyUtilNeta = dailyTotalSales - dailySalaries - dailyGastos - dailyRent - totalTermCommDay - dailyInvest;
+                    const cellUtil = r.getCell(c++);
+                    cellUtil.value = dailyUtilNeta;
+                    cellUtil.fill = pastelGreen; // Columna verde
+
+                    c++; // Spacer
+                    r.getCell(c++).value = day;
+                    let sellersTotalDay = 0;
+                    activeSells.forEach(s => {
+                        const amt = payments.filter(p => p.date === dStr && p.sellerId === s.id).reduce((acc, p) => acc + p.amount, 0);
+                        r.getCell(c++).value = amt || 0;
+                        sellersTotalDay += amt;
+                    });
+                    r.getCell(c).value = sellersTotalDay;
+                    
+                    r.eachCell(cell => { 
+                        cell.border = headerStyleBase.border; 
+                        cell.font = { size: 9 };
+                        if(typeof cell.value === 'number') cell.numFmt = '#,##0';
+                        // Columnas de TOTAL a gris oscuro pastel con texto blanco
+                        if (cell.col === totalVentasCol || cell.col === totalSalSellsCol) {
+                            cell.fill = darkGrayPastel;
+                            cell.font = { color: { argb: 'FFFFFF' }, bold: true, size: 9 };
+                        }
+                    });
+                }
+
+                // FILA TOTALES
+                const totalRowIdx = daysInMonth + 3;
+                const totalRow = sheet.getRow(totalRowIdx);
+                // Celda arriba de Porcentaje debe decir TOTAL en negro
+                totalRow.getCell(1).value = "TOTAL";
+                totalRow.getCell(1).font = { bold: true, size: 9, color: { argb: '000000' } };
+                
+                for (let i = 2; i <= totalSalSellsCol; i++) {
+                    const colLetter = sheet.getColumn(i).letter;
+                    const cellTotal = totalRow.getCell(i);
+                    
+                    const isSpacer = (i === activeBr.length + 9 + activeTerms.length + 1);
+                    const isAverageTotal = (i === activeBr.length + 3);
+
+                    if (isSpacer || isAverageTotal) {
+                         cellTotal.value = "";
+                         continue;
+                    }
+                    
+                    cellTotal.value = { formula: `SUM(${colLetter}3:${colLetter}${totalRowIdx-1})` };
+                    cellTotal.fill = darkGrayPastel;
+                    cellTotal.font = { color: { argb: 'FFFFFF' }, bold: true, size: 9 };
+                    cellTotal.border = headerStyleBase.border;
+                    cellTotal.numFmt = '#,##0';
+                }
+                
+                // Celda en blanco entre Utilidad Neta y segundo contador de días
+                totalRow.getCell(invCol + 2).value = "";
+                totalRow.getCell(invCol + 2).fill = { type: 'pattern', pattern: 'none' };
+
+                // FILA PORCENTAJE / UTILIDAD POR SOCIO
+                const percRowIdx = totalRowIdx + 1;
+                const percRow = sheet.getRow(percRowIdx);
+                percRow.getCell(1).value = "PORCENTAJE";
+                for(let i=0; i<activeBr.length; i++) {
+                    const colLetter = sheet.getColumn(i+2).letter;
+                    const totalSalesLetter = sheet.getColumn(totalVentasCol).letter;
+                    const c = percRow.getCell(i+2);
+                    c.value = { formula: `${colLetter}${totalRowIdx}/${totalSalesLetter}${totalRowIdx}` };
+                    c.numFmt = '0.00%';
+                    c.border = headerStyleBase.border;
+                    c.font = { size: 9 };
+                }
+                
+                // Utilidad por socio
+                const labelSocioCell = percRow.getCell(invCol);
+                const valueSocioCell = percRow.getCell(invCol + 1);
+                labelSocioCell.value = "UTILIDAD POR SOCIO";
+                labelSocioCell.fill = intenseGreen;
+                labelSocioCell.font = { bold: true, size: 9 };
+                labelSocioCell.border = headerStyleBase.border;
+
+                const utilNetaLetter = sheet.getColumn(utilCol).letter;
+                valueSocioCell.value = { formula: `${utilNetaLetter}${totalRowIdx}/5` };
+                valueSocioCell.numFmt = '#,##0';
+                valueSocioCell.fill = intenseGreen;
+                valueSocioCell.font = { bold: true, size: 9 };
+                valueSocioCell.border = headerStyleBase.border;
+
+                // FILA RENTAS
+                const rentRowIdx = percRowIdx + 1;
+                const rentRow = sheet.getRow(rentRowIdx);
+                rentRow.getCell(1).value = "RENTAS";
+                rentRow.getCell(1).fill = pastelRed;
+                rentRow.getCell(1).font = { bold: true, size: 9 };
+                rentRow.getCell(1).border = headerStyleBase.border;
+                
+                for(let i=0; i<activeBr.length; i++) {
+                    const val = rents.find(r => r.branchId === activeBr[i].id && r.monthKey === monthKey)?.amount || 0;
+                    const c = rentRow.getCell(i+2);
+                    c.value = val;
+                    c.fill = pastelRed;
+                    c.numFmt = '#,##0';
+                    c.border = headerStyleBase.border;
+                    c.font = { size: 9 };
+                }
+
+                // Limpiar bordes excedentes
+                sheet.columns.forEach((col, idx) => {
+                    if (idx + 1 > totalSalSellsCol) {
+                        col.eachCell(cell => { cell.border = {}; });
+                    }
+                });
+
+                sheet.columns.forEach(col => { col.width = 11; });
+                sheet.getColumn(1).width = 5;
+
+                // Generar y Descargar
+                const buffer = await workbook.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `REPORTE_${currentMonthName}_${year}.xlsx`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+            };
 
             const handleSaleChange = (sellerId, shift, value) => {
                 const amount = value === "" ? undefined : (parseFloat(value) || 0);
@@ -473,28 +815,22 @@
             };
 
             const copySummaryText = () => {
-                const s = summaryData; 
-                let text = `${getFormattedDateLong(s.date)}\n\n`;
+                const s = summaryData; let text = `${getFormattedDateLong(s.date)}\n\n`;
                 s.detailByBranch.forEach(b => { text += `- ${b.name}: $${formatCurrency(b.total)}\n`; });
                 text += `TOTAL VENTAS: $${formatCurrency(s.totalGross)}\n\nDEDUCCIONES\n`;
                 s.paymentsBySeller.forEach(p => { text += `- Pago ${p.name}: $${formatCurrency(p.amount)}\n`; });
                 Object.entries(s.groupedExtras).forEach(([k, d]) => { if (d.amount > 0) text += `- ${k}: $${formatCurrency(d.amount)}\n`; });
                 text += `TOTAL DEDUCCIONES: $${formatCurrency(s.totalDeductions)}\n\n*TOTAL DÍA: $${formatCurrency(s.totalDay)}*\n`;
-                
-                // Desglose de Terminales - Subido justo debajo de TOTAL DÍA y sin encabezado
                 activeTerminals.forEach(t => {
                     const amt = getTerminalAmountLocal(t.id, 'morning') + getTerminalAmountLocal(t.id, 'afternoon');
-                    if (amt > 0) {
-                        text += `- ${t.name}: $${formatCurrency(amt)}\n`;
-                    }
+                    if (amt > 0) text += `- ${t.name}: $${formatCurrency(amt)}\n`;
                 });
-                
                 text += `TOTAL EFECTIVO: $${formatCurrency(s.totalCash)}`;
                 navigator.clipboard.writeText(text); alert('Resumen copiado');
             };
 
             const exportBackup = () => {
-                const data = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, investments, theme, isDarkMode };
+                const data = { sellers, branches, terminals, sales, payments, branchClosures, terminalEntries, extraExpenses, investments, rents, terminalCommissions, theme, isDarkMode };
                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                 const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `respaldo_triangulo_${selectedDate}.json`; link.click();
             };
@@ -649,7 +985,6 @@
                                     </div>
                                 </div>
 
-                                {/* Sección de Terminales - Movida abajo de Deducciones */}
                                 <div className={`${cardBgClass} p-4 rounded-2xl shadow-sm border`}>
                                     <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-widest border-b pb-2 flex justify-between">Terminales Bancarias <span>Total: ${formatCurrency(summaryData.totalTerminals)}</span></h3>
                                     <div className="space-y-6">
@@ -840,70 +1175,193 @@
                         </div>
                     )}
 
-                    {/* Modal Menú Secreto - Inversiones */}
+                    {/* Modal Menú Secreto */}
                     {showSecretModal && (
-                        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in" onClick={(e) => { if(e.target === e.currentTarget) setShowSecretModal(false); }}>
+                        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in" onClick={(e) => { if(e.target === e.currentTarget) { setShowSecretModal(false); setSecretTab('daily'); } }}>
                             <div className={`${cardBgClass} w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border flex flex-col max-h-[80vh]`}>
                                 <div className={`${getThemeClass('bg')} p-6 flex justify-between items-center border-b`}>
                                     <div className="flex items-center gap-2">
                                         <LucideIcon name="landmark" size={20} className={themeClass} />
-                                        <h3 className={`font-black uppercase text-sm ${themeClass}`}>Inversiones del Día</h3>
+                                        <h3 className={`font-black uppercase text-sm ${themeClass}`}>Menú Secreto</h3>
                                     </div>
-                                    <button onClick={() => setShowSecretModal(false)}>
+                                    <button onClick={() => { setShowSecretModal(false); setSecretTab('daily'); }}>
                                         <LucideIcon name="x" size={24} className={themeClass} />
                                     </button>
                                 </div>
+                                
+                                {isLastDayOfMonth && (
+                                    <div className="flex border-b overflow-x-auto custom-scrollbar bg-gray-50/50">
+                                        <button onClick={() => setSecretTab('daily')} className={`flex-1 px-4 py-3 text-[10px] font-black uppercase transition-all whitespace-nowrap ${secretTab === 'daily' ? 'border-b-2 border-indigo-500 text-indigo-600' : 'text-gray-400'}`}>Registrar Inversión</button>
+                                        <button onClick={() => setSecretTab('rents')} className={`flex-1 px-4 py-3 text-[10px] font-black uppercase transition-all whitespace-nowrap ${secretTab === 'rents' ? 'border-b-2 border-indigo-500 text-indigo-600' : 'text-gray-400'}`}>Pago de Rentas</button>
+                                        <button onClick={() => setSecretTab('terminalComms')} className={`flex-1 px-4 py-3 text-[10px] font-black uppercase transition-all whitespace-nowrap ${secretTab === 'terminalComms' ? 'border-b-2 border-indigo-500 text-indigo-600' : 'text-gray-400'}`}>Comisión de terminales</button>
+                                        <button onClick={() => setSecretTab('monthHistory')} className={`flex-1 px-4 py-3 text-[10px] font-black uppercase transition-all whitespace-nowrap ${secretTab === 'monthHistory' ? 'border-b-2 border-indigo-500 text-indigo-600' : 'text-gray-400'}`}>Historial Inversiones</button>
+                                    </div>
+                                )}
+
                                 <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
-                                    <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} p-4 rounded-2xl space-y-3 border`}>
-                                        <p className="text-[10px] font-black uppercase opacity-50 text-center mb-1">Nueva Inversión - {getDayOfWeek(selectedDate)}</p>
-                                        <input 
-                                            type="text" 
-                                            placeholder="Concepto" 
-                                            value={newInvestment.concept} 
-                                            onChange={e => setNewInvestment(pv => ({...pv, concept: e.target.value}))} 
-                                            className={`w-full p-3 ${inputBgClass} border rounded-xl font-bold text-sm shadow-inner`}
-                                        />
-                                        <div className="relative">
-                                            <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${themeClass} font-bold opacity-60`}>$</span>
-                                            <input 
-                                                type="number" 
-                                                placeholder="Monto" 
-                                                value={newInvestment.amount} 
-                                                onChange={e => setNewInvestment(pv => ({...pv, amount: e.target.value}))} 
-                                                className={`w-full pl-7 pr-3 p-3 ${inputBgClass} border rounded-xl font-black text-sm shadow-inner`}
-                                            />
-                                        </div>
-                                        <button 
-                                            onClick={addInvestment} 
-                                            className={`w-full py-3 rounded-xl ${getThemeClass('btn')} text-white font-black uppercase text-xs shadow-lg active:scale-95 transition-all`}
-                                        >
-                                            Añadir Inversión
-                                        </button>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <h4 className="text-[10px] font-black uppercase text-gray-400 mb-2 border-b pb-1">Registros de {selectedDate}</h4>
-                                        {dayInvestments.length === 0 ? (
-                                            <p className="text-center text-xs text-gray-400 italic py-4">No hay inversiones registradas para hoy.</p>
-                                        ) : (
-                                            dayInvestments.map(inv => (
-                                                <div key={inv.id} className={`flex justify-between items-center p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100 shadow-sm'}`}>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-xs font-bold">{inv.concept}</span>
-                                                        <span className={`text-[10px] font-black ${themeClass}`}>$ {formatCurrency(inv.amount)}</span>
-                                                    </div>
-                                                    <button onClick={() => removeInvestment(inv.id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all">
-                                                        <LucideIcon name="trash-2" size={16} />
-                                                    </button>
+                                    {secretTab === 'daily' && (
+                                        <>
+                                            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} p-4 rounded-2xl space-y-3 border`}>
+                                                <p className="text-[10px] font-black uppercase opacity-50 text-center mb-1">Nueva Inversión - {getDayOfWeek(selectedDate)}</p>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Concepto" 
+                                                    value={newInvestment.concept} 
+                                                    onChange={e => setNewInvestment(pv => ({...pv, concept: e.target.value}))} 
+                                                    className={`w-full p-3 ${inputBgClass} border rounded-xl font-bold text-sm shadow-inner outline-none`}
+                                                />
+                                                <div className="relative">
+                                                    <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${themeClass} font-bold opacity-60`}>$</span>
+                                                    <input 
+                                                        type="number" 
+                                                        placeholder="Monto" 
+                                                        value={newInvestment.amount} 
+                                                        onChange={e => setNewInvestment(pv => ({...pv, amount: e.target.value}))} 
+                                                        className={`w-full pl-7 pr-3 p-3 ${inputBgClass} border rounded-xl font-black text-sm shadow-inner outline-none`}
+                                                    />
                                                 </div>
-                                            ))
-                                        )}
-                                    </div>
+                                                <button 
+                                                    onClick={addInvestment} 
+                                                    className={`w-full py-3 rounded-xl ${getThemeClass('btn')} text-white font-black uppercase text-xs shadow-lg active:scale-95 transition-all`}
+                                                >
+                                                    Añadir Inversión
+                                                </button>
+                                            </div>
 
-                                    {dayInvestments.length > 0 && (
+                                            <div className="space-y-2">
+                                                <h4 className="text-[10px] font-black uppercase text-gray-400 mb-2 border-b pb-1">Registros de hoy</h4>
+                                                {summaryData.dayInvestmentsList.length === 0 ? (
+                                                    <p className="text-center text-xs text-gray-400 italic py-4">No hay inversiones registradas para hoy.</p>
+                                                ) : (
+                                                    summaryData.dayInvestmentsList.map(inv => (
+                                                        <div key={inv.id} className={`flex justify-between items-center p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100 shadow-sm'}`}>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs font-bold">{inv.concept}</span>
+                                                                <span className={`text-[10px] font-black ${themeClass}`}>$ {formatCurrency(inv.amount)}</span>
+                                                            </div>
+                                                            <button onClick={() => removeInvestment(inv.id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all">
+                                                                <LucideIcon name="trash-2" size={16} />
+                                                            </button>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+
+                                            {!isLastDayOfMonth && (
+                                                <p className="text-center text-[9px] font-black text-gray-400 uppercase opacity-60 mt-4">Solo fin de mes se activan más opciones</p>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {secretTab === 'rents' && isLastDayOfMonth && (
+                                        <div className="space-y-4">
+                                            <h4 className="text-sm font-black uppercase text-indigo-600 border-b pb-2">Pago de Rentas</h4>
+                                            <div className="space-y-3">
+                                                {activeBranches.map(br => {
+                                                    const monthKey = `${selectedDate.split('-')[0]}-${selectedDate.split('-')[1]}`;
+                                                    const currentRent = rents.find(r => r.branchId === br.id && r.monthKey === monthKey)?.amount || 0;
+                                                    return (
+                                                        <div key={br.id} className={`p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <VisualPreview source={br.image} size="6" isDarkMode={isDarkMode} />
+                                                                <span className="text-xs font-black uppercase">{br.name}</span>
+                                                            </div>
+                                                            <div className="relative">
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                                                                <input 
+                                                                    type="number" 
+                                                                    placeholder="Monto de Renta"
+                                                                    value={currentRent || ''}
+                                                                    onChange={(e) => handleRentChange(br.id, e.target.value)}
+                                                                    className={`w-full pl-7 pr-3 p-2 ${inputBgClass} border rounded-xl font-bold text-sm outline-none`}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {secretTab === 'terminalComms' && isLastDayOfMonth && (
+                                        <div className="space-y-4">
+                                            <h4 className="text-sm font-black uppercase text-emerald-600 border-b pb-2">Comisión de terminales</h4>
+                                            <div className="space-y-3">
+                                                {activeTerminals.map(t => {
+                                                    const monthKey = `${selectedDate.split('-')[0]}-${selectedDate.split('-')[1]}`;
+                                                    const currentComm = terminalCommissions.find(tc => tc.terminalId === t.id && tc.monthKey === monthKey)?.amount || 0;
+                                                    return (
+                                                        <div key={t.id} className={`p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <VisualPreview source={t.image} size="6" isDarkMode={isDarkMode} />
+                                                                <span className="text-xs font-black uppercase">{t.name}</span>
+                                                            </div>
+                                                            <div className="relative">
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                                                                <input 
+                                                                    type="number" 
+                                                                    placeholder="Monto de Comisión"
+                                                                    value={currentComm || ''}
+                                                                    onChange={(e) => handleTermCommChange(t.id, e.target.value)}
+                                                                    className={`w-full pl-7 pr-3 p-2 ${inputBgClass} border rounded-xl font-bold text-sm outline-none`}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {secretTab === 'monthHistory' && isLastDayOfMonth && (
+                                        <div className="space-y-4">
+                                            <div className="flex flex-col gap-3">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="text-sm font-black uppercase text-indigo-600">Historial Inversiones</h4>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={copyMonthInvestmentsReport} title="Copiar Texto" className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-all active:scale-95">
+                                                            <LucideIcon name="copy" size={14} />
+                                                        </button>
+                                                        <button onClick={exportToExcel} title="Exportar Hoja de Cálculo" className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-all active:scale-95">
+                                                            <LucideIcon name="file-spreadsheet" size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                {isLastDayOfMonth && (
+                                                    <button 
+                                                        onClick={exportToExcel}
+                                                        className="w-full py-3 bg-emerald-500 text-white rounded-xl font-black text-xs uppercase shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                                                    >
+                                                        <LucideIcon name="download" size={14} /> Descargar Reporte Mensual
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="space-y-2">
+                                                {monthInvestments.length === 0 ? (
+                                                    <p className="text-center text-xs text-gray-400 italic py-4">Sin registros este mes.</p>
+                                                ) : (
+                                                    monthInvestments.map(inv => (
+                                                        <div key={inv.id} className={`p-3 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100 shadow-sm'}`}>
+                                                            <div className="flex justify-between items-start mb-1">
+                                                                <span className="text-[9px] font-black uppercase text-gray-400">{inv.date.split('-').reverse().join('/')}</span>
+                                                                <span className={`text-xs font-black ${themeClass}`}>$ {formatCurrency(inv.amount)}</span>
+                                                            </div>
+                                                            <p className="text-xs font-bold opacity-80">{inv.concept}</p>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                            <div className="p-4 rounded-xl bg-indigo-500 text-white text-center">
+                                                <p className="text-[9px] uppercase font-black opacity-60">Acumulado Mensual</p>
+                                                <p className="text-2xl font-black">$ {formatCurrency(monthInvestments.reduce((acc, i) => acc + i.amount, 0))}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {secretTab === 'daily' && summaryData.dayInvestmentsList.length > 0 && (
                                         <div className={`p-4 rounded-xl ${getThemeClass('bg')} ${themeClass} font-black text-center border-t border-dashed ${getThemeClass('border')}`}>
                                             <p className="text-[9px] uppercase opacity-60">Inversión Total del Día</p>
-                                            <p className="text-2xl">$ {formatCurrency(dayInvestments.reduce((acc, curr) => acc + curr.amount, 0))}</p>
+                                            <p className="text-2xl">$ {formatCurrency(summaryData.dayInvestmentsList.reduce((acc, i) => acc + i.amount, 0))}</p>
                                         </div>
                                     )}
                                 </div>
